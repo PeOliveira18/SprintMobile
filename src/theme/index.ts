@@ -7,6 +7,7 @@ export const colors = {
   primarySubtle: '#F3F8FF',
   primaryBorder: '#CFE0FF',
   navy: '#001B4D',
+  navyOverlay: 'rgba(0, 27, 77, 0.6)',
 
   background: '#F5F8FC',
   surface: '#FFFFFF',

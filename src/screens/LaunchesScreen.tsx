@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     right: 8,
     bottom: 8,
     color: colors.textInverse,
-    backgroundColor: 'rgba(0, 27, 77, 0.6)',
+    backgroundColor: colors.navyOverlay,
     borderRadius: radius.sm,
     overflow: 'hidden',
     paddingHorizontal: 6,

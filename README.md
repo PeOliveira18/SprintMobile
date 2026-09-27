@@ -7,11 +7,14 @@ combinando **VIN Share**, **inteligência preditiva**, **telemetria IoT** e uma 
 > Sprint 3 — Mobile Development and IoT: versão final e publicável em APK, identidade visual
 > consolidada, código organizado e demonstração de todas as telas.
 
+**📦 Download do APK:** [Releases → Ford ONE v1.0.0](https://github.com/PeOliveira18/SprintMobile/releases/latest)
+
 ---
 
 ## Sumário
 
 - [Requisitos da Sprint 3](#requisitos-da-sprint-3)
+- [Download do APK](#download-do-apk)
 - [Demonstração das telas](#demonstração-das-telas)
 - [Funcionalidades e fluxos](#funcionalidades-e-fluxos)
 - [Identidade visual (design system)](#identidade-visual-design-system)
@@ -31,9 +34,20 @@ combinando **VIN Share**, **inteligência preditiva**, **telemetria IoT** e uma 
 | Requisito | Como foi atendido |
 | --- | --- |
 | Versão final e publicável em **APK**, com todos os fluxos funcionando sem erros | APK de release gerado e testado em emulador Android 16 (API 36). Todos os fluxos foram revisados: botões sem ação foram ligados a fluxos reais, telas inacessíveis ganharam navegação e os parâmetros de rota passaram a ser sincronizados. |
-| **Identidade visual consolidada** (componentes, cores, tipografia e UX) | Design system em [`src/theme`](src/theme/index.ts) com tokens de cor, tipografia, espaçamento, raio e sombra. Nenhuma tela usa cor fixa fora do tema. Componentes compartilhados (`Screen`, `OneCard`, `ActionButton`, `MetricCard`, `StatusBadge`, `TextField`, etc.), ícone, splash e ícone adaptativo da marca, textos com acentuação correta. |
+| **Identidade visual consolidada** (componentes, cores, tipografia e UX) | Design system em [`src/theme`](src/theme/index.ts) com tokens de cor, tipografia, espaçamento, raio e sombra. Todas as cores do app vêm do tema. Componentes compartilhados (`Screen`, `OneCard`, `ActionButton`, `MetricCard`, `StatusBadge`, `TextField`, etc.), ícone, splash e ícone adaptativo da marca, textos com acentuação correta. |
 | Produto finalizado: **código organizado**, **README completo** e **demonstração visual de todas as telas** | Camadas separadas (rotas, telas, componentes, hooks, serviços, tipos, constantes e utilitários), sem código duplicado nem sobras de template. ESLint e TypeScript sem erros. Este README traz as capturas de todas as telas. |
 | **Build final em APK via Expo EAS Build** (ou equivalente) que instala e executa em dispositivo ou emulador | [`eas.json`](eas.json) com os perfis `preview` e `production` gerando `.apk`. Build local equivalente com `expo prebuild` + Gradle (`npm run build:apk:local`), instalado e validado no emulador. |
+
+---
+
+## Download do APK
+
+O APK final (Android, `br.com.fiap.fordone`, versão 1.0.0) está publicado na página de
+[Releases do repositório](https://github.com/PeOliveira18/SprintMobile/releases/latest).
+
+1. Baixe o arquivo `ford-one-v1.0.0.apk` no celular Android (ou no computador, para o emulador).
+2. Instale seguindo [Como instalar o APK](#como-instalar-o-apk).
+3. Abra o app **Ford ONE** e siga os [fluxos principais](#fluxos-principais).
 
 ---
 
@@ -93,14 +107,15 @@ Todas as telas que buscam dados têm estados de **carregamento**, **erro com "Te
 
 ## Identidade visual (design system)
 
-Os tokens ficam em [`src/theme/index.ts`](src/theme/index.ts) e são a única fonte de cores e estilos
-de texto do app.
+Os tokens ficam em [`src/theme/index.ts`](src/theme/index.ts) e são a única fonte de cores do app e
+a base dos estilos de texto.
 
 | Token | Valor | Uso |
 | --- | --- | --- |
 | `primary` | `#005BEA` | Ações, links, estados ativos |
 | `primaryDark` | `#064FAE` | Oval da marca Ford |
 | `navy` | `#001B4D` | Marca, ícone e splash |
+| `navyOverlay` | `rgba(0, 27, 77, 0.6)` | Legenda sobre imagens |
 | `background` | `#F5F8FC` | Fundo das telas |
 | `surface` | `#FFFFFF` | Cards |
 | `text` / `textSecondary` / `textMuted` | `#071331` / `#43516A` / `#64748B` | Hierarquia de texto |
@@ -245,4 +260,6 @@ npm run doctor      # expo-doctor: dependências e configuração do SDK
 
 | Nome | RM |
 | --- | --- |
-| _preencher_ | _preencher_ |
+| Pedro Oliveira | 99943 |
+| Debora Ivanowski | 555694 |
+| Diego Cabral | 557817 |

@@ -4,6 +4,8 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { colors } from '@/theme';
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: false,
@@ -30,27 +32,17 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
-            headerStyle: {
-              backgroundColor: '#FFFFFF',
-            },
-            headerTintColor: '#001B4D',
-            headerTitleStyle: {
-              fontWeight: '900',
-            },
+            animation: 'slide_from_right',
             contentStyle: {
-              backgroundColor: '#EEF3F8',
+              backgroundColor: colors.background,
             },
           }}
         >
-          <Stack.Screen name="(tabs)" options={{ title: 'Ford ONE' }} />
-          <Stack.Screen
-            name="clientes/[id]"
-            options={{
-              headerShown: true,
-              headerBackTitle: 'Voltar',
-              title: 'Plano VIN',
-            }}
-          />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="clientes/[id]" />
+          <Stack.Screen name="campanha" />
+          <Stack.Screen name="conta" />
+          <Stack.Screen name="perfil" />
         </Stack>
       </QueryClientProvider>
     </SafeAreaProvider>

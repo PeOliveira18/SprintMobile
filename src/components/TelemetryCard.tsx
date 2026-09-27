@@ -1,7 +1,12 @@
+import { Ionicons } from '@expo/vector-icons';
+import { ComponentProps } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { StatusBadge } from '@/components/StatusBadge';
-import { IoTSnapshot, SensorStatus } from '@/types/customer';
+import { colors, radius, spacing, typography } from '@/theme';
+import { IoTSnapshot } from '@/types/customer';
+import { formatKm, formatRelativeTime } from '@/utils/format';
+import { sensorStatusLabel, sensorTone } from '@/utils/labels';
 
 type TelemetryCardProps = {
   snapshot: IoTSnapshot;
@@ -13,16 +18,18 @@ export function TelemetryCard({ snapshot }: TelemetryCardProps) {
       <View style={styles.header}>
         <View style={styles.titleGroup}>
           <Text style={styles.vehicle}>{snapshot.vehicle}</Text>
-          <Text style={styles.sync}>Cliente #{snapshot.customerId} | {snapshot.lastSync}</Text>
+          <Text style={styles.sync}>
+            Cliente #{snapshot.customerId} · sincronizado {formatRelativeTime(snapshot.lastSync)}
+          </Text>
         </View>
-        <StatusBadge label={snapshot.status} tone={getStatusTone(snapshot.status)} />
+        <StatusBadge label={sensorStatusLabel(snapshot.status)} tone={sensorTone(snapshot.status)} />
       </View>
 
       <View style={styles.grid}>
-        <Metric label="Km" value={`${snapshot.odometerKm}`} />
-        <Metric label="Bateria" value={`${snapshot.batteryPercent}%`} />
-        <Metric label="Pneu" value={`${snapshot.tirePressurePsi} psi`} />
-        <Metric label="Oleo" value={`${snapshot.oilLifePercent}%`} />
+        <Metric icon="speedometer-outline" label="Odômetro" value={formatKm(snapshot.odometerKm)} />
+        <Metric icon="battery-half-outline" label="Bateria" value={`${snapshot.batteryPercent}%`} />
+        <Metric icon="disc-outline" label="Pneus" value={`${snapshot.tirePressurePsi} psi`} />
+        <Metric icon="water-outline" label="Óleo" value={`${snapshot.oilLifePercent}%`} />
       </View>
 
       <Text style={styles.alert}>{snapshot.alert}</Text>
@@ -30,81 +37,79 @@ export function TelemetryCard({ snapshot }: TelemetryCardProps) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({
+  icon,
+  label,
+  value,
+}: {
+  icon: ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  value: string;
+}) {
   return (
     <View style={styles.metric}>
-      <Text style={styles.metricLabel}>{label}</Text>
+      <View style={styles.metricLabelRow}>
+        <Ionicons name={icon} size={14} color={colors.textMuted} />
+        <Text style={styles.metricLabel}>{label}</Text>
+      </View>
       <Text style={styles.metricValue}>{value}</Text>
     </View>
   );
 }
 
-function getStatusTone(status: SensorStatus) {
-  if (status === 'Critico') {
-    return 'red' as const;
-  }
-
-  if (status === 'Atencao') {
-    return 'yellow' as const;
-  }
-
-  return 'green' as const;
-}
-
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#D7DEE8',
-    padding: 16,
+    borderColor: colors.border,
+    padding: spacing.lg,
     gap: 14,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: spacing.md,
   },
   titleGroup: {
     flex: 1,
     gap: 3,
   },
   vehicle: {
-    color: '#0F172A',
+    ...typography.cardTitle,
     fontSize: 17,
-    fontWeight: '900',
   },
   sync: {
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '600',
+    ...typography.caption,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   metric: {
-    minWidth: '47%',
-    borderRadius: 8,
-    backgroundColor: '#F8FAFC',
+    flexGrow: 1,
+    flexBasis: '46%',
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceMuted,
     padding: 10,
-    gap: 4,
+    gap: spacing.xs,
+  },
+  metricLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   metricLabel: {
-    color: '#64748B',
+    ...typography.overline,
     fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
   },
   metricValue: {
-    color: '#172033',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '900',
   },
   alert: {
-    color: '#334155',
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.body,
   },
 });

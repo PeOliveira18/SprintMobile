@@ -1,31 +1,48 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Image, ImageSourcePropType, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '@/components/ActionButton';
 import { FordOneHeader } from '@/components/FordOneHeader';
 import { OneCard } from '@/components/OneCard';
+import { Screen } from '@/components/Screen';
+import { StatusBadge } from '@/components/StatusBadge';
+import { getVehicleImage } from '@/constants/images';
 import { useAccountSession } from '@/hooks/useAccountSession';
 import { useCustomers } from '@/hooks/useCustomers';
+import { colors, radius, spacing, typography } from '@/theme';
 import { AccountOnboarding } from '@/types/account';
+import { formatCurrency, normalizeText } from '@/utils/format';
 
-const launches = [
+type Launch = {
+  model: 'Territory' | 'Maverick' | 'Edge';
+  name: string;
+  category: string;
+  price: number;
+  features: string[];
+};
+
+const launches: Launch[] = [
   {
+    model: 'Territory',
     name: 'Novo Ford Territory 2025',
-    price: 'R$ 189.990',
-    image: require('../../assets/ford-one/image27.jpg') as ImageSourcePropType,
+    category: 'SUV médio',
+    price: 189990,
     features: ['Motor EcoBoost 1.5L Turbo', 'Painel digital de 12,3"', 'Ford Co-Pilot360 Assist'],
   },
   {
+    model: 'Maverick',
     name: 'Nova Ford Maverick 2025',
-    price: 'R$ 164.990',
-    image: require('../../assets/ford-one/image3.jpg') as ImageSourcePropType,
-    features: ['Motor 2.0L EcoBoost', 'Cacamba versatil', 'FordPass Connect'],
+    category: 'Picape',
+    price: 164990,
+    features: ['Motor 2.0L EcoBoost', 'Caçamba versátil', 'FordPass Connect'],
   },
   {
+    model: 'Edge',
     name: 'Novo Ford Edge 2025',
-    price: 'R$ 229.990',
-    image: require('../../assets/ford-one/image9.png') as ImageSourcePropType,
-    features: ['Motor V6 EcoBoost', 'Tracao AWD inteligente', 'Teto solar panoramico'],
+    category: 'SUV premium',
+    price: 229990,
+    features: ['Motor V6 EcoBoost', 'Tração AWD inteligente', 'Teto solar panorâmico'],
   },
 ];
 
@@ -34,90 +51,138 @@ export function LaunchesScreen() {
   const { profile, loading: profileLoading } = useAccountSession();
   const customer = customers[0];
   const onboarding = profile?.onboarding;
-  const recommendedLaunches = getRecommendedLaunches(onboarding);
-  const featuredModel = recommendedLaunches[0];
+  const priority = onboarding ? getPriorityModel(onboarding) : null;
+  const recommendedLaunches = sortByPriority(priority);
+
+  function scheduleTestDrive(launch: Launch) {
+    if (!customer) {
+      return;
+    }
+
+    router.push({
+      pathname: '/campanha',
+      params: { customerId: String(customer.id), title: `Test drive ${launch.name}` },
+    });
+  }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <Screen>
       <FordOneHeader
-        title="Novos lancamentos que combinam com voce"
+        title="Novos lançamentos que combinam com você"
         subtitle={
-          onboarding
-            ? `Recomendacoes para o perfil de ${profile.name}.`
-            : 'Entre ou cadastre seu perfil para receber recomendacoes personalizadas.'
+          profile
+            ? `Recomendações para o perfil de ${profile.name}.`
+            : 'Entre ou cadastre seu perfil para receber recomendações personalizadas.'
         }
       />
 
       {onboarding ? (
-        <View style={styles.tags}>
-          <Text style={styles.tag}>Perfil: {onboarding.objective}</Text>
-          <Text style={styles.tag}>Uso: {onboarding.frequency}</Text>
-          <Text style={styles.tag}>Km/mes: {onboarding.monthlyDistance}</Text>
-          <Text style={styles.tag}>Preferencia: {onboarding.preference}</Text>
-        </View>
+        <OneCard variant="highlight">
+          <View style={styles.profileHeader}>
+            <Text style={typography.cardTitle}>Seu perfil de uso</Text>
+            <ActionButton
+              label="Editar"
+              icon="create-outline"
+              variant="secondary"
+              compact
+              onPress={() => router.push('/perfil')}
+            />
+          </View>
+          <View style={styles.tags}>
+            <Tag label="Uso" value={onboarding.objective} />
+            <Tag label="Frequência" value={onboarding.frequency} />
+            <Tag label="Km/mês" value={onboarding.monthlyDistance} />
+            <Tag label="Preferência" value={onboarding.preference} />
+          </View>
+        </OneCard>
       ) : (
-        <OneCard style={styles.emptyProfile}>
-          <Text style={styles.emptyTitle}>
-            {profileLoading ? 'Carregando perfil...' : 'Perfil nao encontrado'}
+        <OneCard variant="highlight">
+          <Text style={typography.cardTitle}>
+            {profileLoading ? 'Carregando perfil...' : 'Perfil não encontrado'}
           </Text>
-          <Text style={styles.emptyText}>
-            Cadastre ou entre na sua conta para usar perfil de uso, frequencia e
-            quilometragem mensal nas recomendacoes.
+          <Text style={typography.body}>
+            Cadastre ou entre na sua conta para usar perfil de uso, frequência e quilometragem mensal
+            nas recomendações.
           </Text>
           <ActionButton label="Abrir minha conta" onPress={() => router.push('/conta')} />
         </OneCard>
       )}
 
-      {recommendedLaunches.map((item) => (
-        <OneCard key={item.name}>
-          <Image source={item.image} style={styles.carImage} />
-          <Text style={styles.badge}>Novo</Text>
-          <Text style={styles.name}>{item.name}</Text>
-          <Text style={styles.price}>A partir de {item.price}</Text>
+      {recommendedLaunches.map((launch) => (
+        <OneCard key={launch.model}>
+          <View>
+            <Image
+              source={getVehicleImage(launch.model)}
+              style={styles.carImage}
+              resizeMode="cover"
+              accessibilityLabel={`Imagem ilustrativa do ${launch.name}`}
+            />
+            <Text style={styles.imageCaption}>Imagem ilustrativa</Text>
+          </View>
+          <View style={styles.badges}>
+            <StatusBadge label="Novo" tone="blue" />
+            <StatusBadge label={launch.category} tone="gray" />
+            {launch.model === priority ? (
+              <StatusBadge label="Recomendado" tone="green" />
+            ) : null}
+          </View>
+          <View style={styles.titleGroup}>
+            <Text style={styles.name}>{launch.name}</Text>
+            <Text style={styles.price}>A partir de {formatCurrency(launch.price).replace(/,00$/, '')}</Text>
+          </View>
           <View style={styles.features}>
-            {item.features.map((feature) => (
-              <Text key={feature} style={styles.feature}>✓ {feature}</Text>
+            {launch.features.map((feature) => (
+              <View key={feature} style={styles.featureRow}>
+                <Ionicons name="checkmark-circle-outline" size={17} color={colors.success} />
+                <Text style={styles.feature}>{feature}</Text>
+              </View>
             ))}
           </View>
-          <Text style={styles.link}>Ver detalhes do modelo →</Text>
+          <ActionButton
+            label="Agendar test drive"
+            icon="calendar-outline"
+            variant="secondary"
+            disabled={!customer}
+            onPress={() => scheduleTestDrive(launch)}
+          />
         </OneCard>
       ))}
 
-      <OneCard style={styles.compare}>
-        <Text style={styles.compareTitle}>Compare com modelos da mesma categoria</Text>
-        <Text style={styles.compareText}>
-          {onboarding
-            ? `${featuredModel.name} foi priorizado para seu perfil ${onboarding.objective.toLowerCase()}, com foco em ${onboarding.preference.toLowerCase()} e ${onboarding.monthlyDistance} por mes.`
-            : 'As recomendacoes serao personalizadas assim que houver uma conta com perfil de uso cadastrado.'}
+      <OneCard variant="highlight">
+        <Text style={typography.cardTitle}>Por que esta ordem?</Text>
+        <Text style={typography.body}>
+          {onboarding && priority
+            ? `O ${launches.find((item) => item.model === priority)?.name} foi priorizado para o seu perfil ${onboarding.objective.toLowerCase()}, com foco em ${onboarding.preference.toLowerCase()} e ${onboarding.monthlyDistance} por mês.`
+            : 'As recomendações serão personalizadas assim que houver uma conta com perfil de uso cadastrado.'}
         </Text>
-        <ActionButton
-          label={customer ? 'Agendar atendimento' : 'Carregando...'}
-          disabled={!customer}
-          onPress={() => {
-            if (customer) {
-              router.push(`/campanha?customerId=${customer.id}`);
-            }
-          }}
-        />
       </OneCard>
-    </ScrollView>
+    </Screen>
   );
 }
 
-function getRecommendedLaunches(onboarding?: AccountOnboarding) {
-  if (!onboarding) {
+function Tag({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.tag}>
+      <Text style={styles.tagLabel}>{label}</Text>
+      <Text style={styles.tagValue}>{value}</Text>
+    </View>
+  );
+}
+
+function sortByPriority(priority: Launch['model'] | null) {
+  if (!priority) {
     return launches;
   }
 
-  const priority = getPriorityModel(onboarding);
-
   return launches
     .slice()
-    .sort((a, b) => Number(b.name.includes(priority)) - Number(a.name.includes(priority)));
+    .sort((a, b) => Number(b.model === priority) - Number(a.model === priority));
 }
 
-function getPriorityModel(onboarding: AccountOnboarding) {
-  const text = `${onboarding.objective} ${onboarding.preference} ${onboarding.monthlyDistance}`.toLowerCase();
+function getPriorityModel(onboarding: AccountOnboarding): Launch['model'] {
+  const text = normalizeText(
+    `${onboarding.objective} ${onboarding.preference} ${onboarding.monthlyDistance}`,
+  );
 
   if (text.includes('trabalho') || text.includes('performance') || text.includes('3.000')) {
     return 'Maverick';
@@ -135,21 +200,79 @@ function getPriorityModel(onboarding: AccountOnboarding) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F8FC' },
-  content: { padding: 16, paddingBottom: 36, gap: 16 },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tag: { color: '#43516A', backgroundColor: '#FFFFFF', borderColor: '#DDE6F3', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7, fontWeight: '800' },
-  emptyProfile: { gap: 10, backgroundColor: '#F8FBFF' },
-  emptyTitle: { color: '#071331', fontSize: 17, fontWeight: '900' },
-  emptyText: { color: '#43516A', fontSize: 14, lineHeight: 20 },
-  carImage: { width: '100%', height: 158, borderRadius: 12, backgroundColor: '#EEF3F8' },
-  badge: { alignSelf: 'flex-start', marginTop: 12, color: '#FFFFFF', backgroundColor: '#005BEA', borderRadius: 7, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 4, fontWeight: '900' },
-  name: { color: '#071331', fontSize: 21, fontWeight: '900', marginTop: 10 },
-  price: { color: '#071331', fontSize: 18, fontWeight: '900', marginTop: 6 },
-  features: { gap: 6, marginTop: 12 },
-  feature: { color: '#0A7B4B', fontSize: 14, fontWeight: '800' },
-  link: { color: '#005BEA', fontSize: 14, fontWeight: '900', marginTop: 14 },
-  compare: { backgroundColor: '#F3F8FF', gap: 8 },
-  compareTitle: { color: '#071331', fontSize: 17, fontWeight: '900' },
-  compareText: { color: '#43516A', fontSize: 14, lineHeight: 20 },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  tags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  tag: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  tagLabel: {
+    ...typography.overline,
+    fontSize: 10,
+    lineHeight: 14,
+  },
+  tagValue: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  carImage: {
+    width: '100%',
+    height: 170,
+    borderRadius: radius.md,
+    backgroundColor: colors.navy,
+  },
+  imageCaption: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    color: colors.textInverse,
+    backgroundColor: 'rgba(0, 27, 77, 0.6)',
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  titleGroup: {
+    gap: spacing.xs,
+  },
+  name: {
+    ...typography.title,
+  },
+  price: {
+    ...typography.cardTitle,
+    color: colors.primary,
+  },
+  features: {
+    gap: 6,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  feature: {
+    ...typography.bodyStrong,
+    flex: 1,
+  },
 });

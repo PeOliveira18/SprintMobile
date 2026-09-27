@@ -1,7 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { StatusBadge } from '@/components/StatusBadge';
-import { Customer, RiskLevel } from '@/types/customer';
+import { colors, radius, shadows, spacing, typography } from '@/theme';
+import { Customer } from '@/types/customer';
+import { leadPriorityLabel, leadTypeLabel, riskTone } from '@/utils/labels';
 
 type CustomerCardProps = {
   customer: Customer;
@@ -12,6 +15,7 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`Abrir plano do VIN de ${customer.name}`}
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
@@ -21,68 +25,61 @@ export function CustomerCard({ customer, onPress }: CustomerCardProps) {
             {customer.name}
           </Text>
           <Text style={styles.vehicle} numberOfLines={1}>
-            {customer.vehicle} {customer.modelYear} | {customer.dealershipCode}
+            {customer.vehicle} {customer.modelYear} · {customer.dealershipCode}
           </Text>
           <Text style={styles.vin} numberOfLines={1}>
-            {customer.vin}
+            VIN {customer.vin}
           </Text>
         </View>
-        <StatusBadge label={customer.leadPriority} tone={getRiskTone(customer.riskLevel)} />
+        <StatusBadge
+          label={`Prioridade ${leadPriorityLabel(customer.leadPriority).toLowerCase()}`}
+          tone={riskTone(customer.riskLevel)}
+        />
       </View>
 
       <View style={styles.row}>
-        <View>
-          <Text style={styles.label}>VIN Share</Text>
-          <Text style={styles.value}>{customer.hasServiceInNetwork ? 'Rede' : 'Fora'}</Text>
-        </View>
-        <View>
-          <Text style={styles.label}>Evasao</Text>
-          <Text style={styles.value}>{customer.churnProbability}%</Text>
-        </View>
-        <View>
-          <Text style={styles.label}>Lead</Text>
-          <Text style={styles.valueSmall}>{formatLeadType(customer.leadType)}</Text>
-        </View>
+        <Stat label="VIN Share" value={customer.hasServiceInNetwork ? 'Rede' : 'Fora'} />
+        <Stat label="Evasão" value={`${customer.churnProbability}%`} />
+        <Stat label="Lead" value={leadTypeLabel(customer.leadType)} small />
       </View>
 
-      <Text style={styles.action}>{customer.recommendedAction}</Text>
+      <View style={styles.footer}>
+        <Text style={styles.action}>{customer.recommendedAction}</Text>
+        <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+      </View>
     </Pressable>
   );
 }
 
-function formatLeadType(value: string) {
-  return value.replaceAll('_', ' ');
-}
-
-function getRiskTone(riskLevel: RiskLevel) {
-  if (riskLevel === 'Critico' || riskLevel === 'Alto') {
-    return 'red' as const;
-  }
-
-  if (riskLevel === 'Medio') {
-    return 'yellow' as const;
-  }
-
-  return 'green' as const;
+function Stat({ label, value, small = false }: { label: string; value: string; small?: boolean }) {
+  return (
+    <View style={[styles.stat, small && styles.statWide]}>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={small ? styles.valueSmall : styles.value} numberOfLines={2}>
+        {value}
+      </Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#D7DEE8',
-    padding: 16,
+    borderColor: colors.border,
+    padding: spacing.lg,
     gap: 14,
+    ...shadows.card,
   },
   pressed: {
-    opacity: 0.75,
+    opacity: 0.8,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: spacing.md,
   },
   nameGroup: {
     flex: 1,
@@ -90,44 +87,50 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   name: {
-    color: '#0F172A',
+    ...typography.cardTitle,
     fontSize: 17,
-    fontWeight: '900',
   },
   vehicle: {
-    color: '#64748B',
+    ...typography.caption,
     fontSize: 13,
-    fontWeight: '600',
   },
   vin: {
-    color: '#475569',
-    fontSize: 12,
+    ...typography.caption,
     fontWeight: '800',
+    color: colors.textSecondary,
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
+    gap: spacing.md,
+  },
+  stat: {
+    gap: 2,
+  },
+  statWide: {
+    flex: 1,
+    minWidth: 0,
   },
   label: {
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    ...typography.overline,
   },
   value: {
-    color: '#172033',
+    color: colors.text,
     fontSize: 19,
     fontWeight: '900',
   },
   valueSmall: {
-    color: '#172033',
-    fontSize: 15,
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '900',
   },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   action: {
-    color: '#334155',
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.body,
+    flex: 1,
   },
 });

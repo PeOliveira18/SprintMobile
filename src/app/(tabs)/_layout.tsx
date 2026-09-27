@@ -1,40 +1,37 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { ComponentProps } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { colors } from '@/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
+const TAB_BAR_HEIGHT = 60;
+
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        headerTintColor: '#001B4D',
-        headerTitleStyle: {
-          fontWeight: '900',
-        },
-        tabBarActiveTintColor: '#0B5CAD',
-        tabBarInactiveTintColor: '#64748B',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: '800',
-          lineHeight: 12,
-          marginTop: -2,
         },
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#D7DEE8',
-          height: 70,
-          paddingBottom: 12,
-          paddingHorizontal: 12,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          height: TAB_BAR_HEIGHT + insets.bottom,
+          paddingBottom: insets.bottom + 6,
           paddingTop: 6,
         },
         tabBarItemStyle: {
           minWidth: 0,
           paddingHorizontal: 0,
-        },
-        tabBarIconStyle: {
-          marginTop: 2,
         },
       }}
     >
@@ -42,57 +39,44 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Resumo',
-          tabBarIcon: ({ color, size }) => tabIcon('home-outline', color, size),
-        }}
-      />
-      <Tabs.Screen
-        name="perfil"
-        options={{
-          title: 'Perfil',
-          href: null,
-          tabBarIcon: ({ color, size }) => tabIcon('person-outline', color, size),
+          tabBarIcon: ({ color, focused }) => tabIcon(focused ? 'home' : 'home-outline', color),
         }}
       />
       <Tabs.Screen
         name="servicos"
         options={{
-          title: 'Serv.',
-          tabBarIcon: ({ color, size }) => tabIcon('construct-outline', color, size),
+          title: 'Serviços',
+          tabBarIcon: ({ color, focused }) =>
+            tabIcon(focused ? 'construct' : 'construct-outline', color),
         }}
       />
       <Tabs.Screen
         name="lancamentos"
         options={{
           title: 'Modelos',
-          tabBarIcon: ({ color, size }) => tabIcon('sparkles-outline', color, size),
+          tabBarIcon: ({ color, focused }) =>
+            tabIcon(focused ? 'sparkles' : 'sparkles-outline', color),
         }}
       />
       <Tabs.Screen
         name="concessionarias"
         options={{
-          title: 'Concess.',
-          tabBarIcon: ({ color, size }) => tabIcon('trophy-outline', color, size),
-        }}
-      />
-      <Tabs.Screen
-        name="campanha"
-        options={{
-          title: 'Leads',
-          href: null,
-          tabBarIcon: ({ color, size }) => tabIcon('chatbox-ellipses-outline', color, size),
+          title: 'Rede',
+          tabBarIcon: ({ color, focused }) => tabIcon(focused ? 'trophy' : 'trophy-outline', color),
         }}
       />
       <Tabs.Screen
         name="iot"
         options={{
-          title: 'IA',
-          tabBarIcon: ({ color, size }) => tabIcon('hardware-chip-outline', color, size),
+          title: 'IoT',
+          tabBarIcon: ({ color, focused }) =>
+            tabIcon(focused ? 'hardware-chip' : 'hardware-chip-outline', color),
         }}
       />
     </Tabs>
   );
 }
 
-function tabIcon(name: IconName, color: string, size: number) {
-  return <Ionicons name={name} color={color} size={Math.min(size, 24)} />;
+function tabIcon(name: IconName, color: string) {
+  return <Ionicons name={name} color={color} size={22} />;
 }

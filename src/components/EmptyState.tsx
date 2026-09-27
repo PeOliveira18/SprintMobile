@@ -1,36 +1,59 @@
+import { Ionicons } from '@expo/vector-icons';
+import { ComponentProps, ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { colors, radius, spacing, typography } from '@/theme';
 
 type EmptyStateProps = {
   title: string;
   description: string;
+  icon?: ComponentProps<typeof Ionicons>['name'];
+  action?: ReactNode;
 };
 
-export function EmptyState({ title, description }: EmptyStateProps) {
+export function EmptyState({
+  title,
+  description,
+  icon = 'file-tray-outline',
+  action,
+}: EmptyStateProps) {
   return (
     <View style={styles.container}>
+      <View style={styles.icon}>
+        <Ionicons name={icon} size={22} color={colors.primary} />
+      </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.description}>{description}</Text>
+      {action}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#D7DEE8',
-    backgroundColor: '#F8FAFC',
-    padding: 18,
-    gap: 6,
+    borderStyle: 'dashed',
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceMuted,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    alignItems: 'center',
+  },
+  icon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
-    color: '#172033',
-    fontSize: 16,
-    fontWeight: '800',
+    ...typography.cardTitle,
+    textAlign: 'center',
   },
   description: {
-    color: '#64748B',
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.body,
+    textAlign: 'center',
   },
 });

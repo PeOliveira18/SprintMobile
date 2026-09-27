@@ -13,9 +13,9 @@ export const FORD_CUSTOMERS: FordVehicleProfile[] = [
     id: 1,
     name: 'Mariana Alves',
     email: 'mariana.alves@email.com',
-    phone: '11988887777',
+    phone: '(11) 98888-7777',
     document: '12345678901',
-    city: 'Sao Paulo',
+    city: 'São Paulo',
     state: 'SP',
     dealershipCode: 'SP001',
     dealership: 'Ford Center Paulista',
@@ -35,7 +35,7 @@ export const FORD_CUSTOMERS: FordVehicleProfile[] = [
     id: 2,
     name: 'Bruno Costa',
     email: 'bruno.costa@email.com',
-    phone: '21977776666',
+    phone: '(21) 97777-6666',
     document: '98765432100',
     city: 'Rio de Janeiro',
     state: 'RJ',
@@ -57,7 +57,7 @@ export const FORD_CUSTOMERS: FordVehicleProfile[] = [
     id: 3,
     name: 'Camila Rocha',
     email: 'camila.rocha@email.com',
-    phone: '41966665555',
+    phone: '(41) 96666-5555',
     document: '45678912300',
     city: 'Curitiba',
     state: 'PR',
@@ -209,12 +209,12 @@ export function buildFallbackServiceOrders(customerId: number, model: string) {
     {
       id: customerId * 100 + 1,
       customerId,
-      title: `Revisao preventiva Ford ${model}`,
+      title: `Revisão preventiva Ford ${model}`,
       description:
-        'Checklist de freios, bateria, pneus, fluidos e atualizacoes recomendadas pela concessionaria.',
+        'Checklist de freios, bateria, pneus, fluidos e atualizações recomendadas pela concessionária.',
       status: 'Agendado' as const,
       amount: 590,
-      scheduledAt: '2026-05-22',
+      scheduledAt: daysFromNow(7),
     },
   ];
 }
@@ -236,9 +236,7 @@ export function buildTelemetrySnapshots(): IoTSnapshot[] {
       oilLifePercent: Math.round(oilLifePercent),
       status,
       alert: getSensorAlert(status),
-      lastSync: `2026-05-${String(10 + profile.id).padStart(2, '0')} 08:${String(
-        10 + profile.id * 4,
-      ).padStart(2, '0')}`,
+      lastSync: new Date(Date.now() - profile.id * 7 * 60 * 1000).toISOString(),
     };
   });
 }
@@ -332,26 +330,26 @@ function getRecommendedAction(
   criticalRecallCount: number,
 ) {
   if (criticalRecallCount > 0) {
-    return 'Contato ativo com prioridade maxima para campanha de recall e agendamento assistido.';
+    return 'Contato ativo com prioridade máxima para campanha de recall e agendamento assistido.';
   }
 
   if (recallCount > 0) {
-    return 'Enviar campanha de servico com explicacao do recall e horarios disponiveis.';
+    return 'Enviar campanha de serviço com explicação do recall e horários disponíveis.';
   }
 
   if (profile.segment === 'Abandono') {
-    return 'Oferta de retorno com diagnostico gratuito e contato consultivo.';
+    return 'Oferta de retorno com diagnóstico gratuito e contato consultivo.';
   }
 
   if (profile.segment === 'Esquecido') {
-    return 'Lembrete ativo com janela de agendamento e beneficio de revisao.';
+    return 'Lembrete ativo com janela de agendamento e benefício de revisão.';
   }
 
   if (profile.segment === 'Economico') {
-    return 'Cupom de manutencao e pacote com preco fechado.';
+    return 'Cupom de manutenção e pacote com preço fechado.';
   }
 
-  return 'Programa de beneficios e convite para revisao preventiva.';
+  return 'Programa de benefícios e convite para revisão preventiva.';
 }
 
 function getCustomerInsight(
@@ -360,7 +358,7 @@ function getCustomerInsight(
   criticalRecallCount: number,
 ) {
   if (criticalRecallCount > 0) {
-    return `A API da NHTSA indica recall critico para o Ford ${profile.model} ${profile.modelYear}.`;
+    return `A API da NHTSA indica recall crítico para o Ford ${profile.model} ${profile.modelYear}.`;
   }
 
   if (recallCount > 0) {
@@ -368,18 +366,18 @@ function getCustomerInsight(
   }
 
   if (profile.segment === 'Abandono') {
-    return 'Cliente tende a sair da rede apos a primeira revisao.';
+    return 'Cliente tende a sair da rede após a primeira revisão.';
   }
 
   if (profile.segment === 'Esquecido') {
-    return 'Cliente perde o timing de manutencao e retorna tarde demais.';
+    return 'Cliente perde o timing de manutenção e retorna tarde demais.';
   }
 
   if (profile.segment === 'Economico') {
-    return 'Cliente responde melhor a condicoes comerciais claras.';
+    return 'Cliente responde melhor a condições comerciais claras.';
   }
 
-  return 'Cliente mantem relacionamento consistente com a rede oficial.';
+  return 'Cliente mantém relacionamento consistente com a rede oficial.';
 }
 
 function getSensorStatus(
@@ -400,12 +398,17 @@ function getSensorStatus(
 
 function getSensorAlert(status: SensorStatus) {
   if (status === 'Critico') {
-    return 'Acionar concessionaria antes da proxima revisao.';
+    return 'Acionar concessionária antes da próxima revisão.';
   }
 
   if (status === 'Atencao') {
-    return 'Enviar lembrete preventivo com sugestao de horario.';
+    return 'Enviar lembrete preventivo com sugestão de horário.';
   }
 
-  return 'Veiculo dentro do padrao esperado.';
+  return 'Veículo dentro do padrão esperado.';
+}
+
+function daysFromNow(days: number) {
+  const date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  return date.toISOString().slice(0, 10);
 }

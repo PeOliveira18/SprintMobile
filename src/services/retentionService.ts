@@ -82,7 +82,7 @@ function getProfileById(id: number) {
   const profile = FORD_CUSTOMERS.find((customer) => customer.id === id);
 
   if (!profile) {
-    throw new Error('Cliente Ford nao encontrado.');
+    throw new Error('Cliente Ford não encontrado.');
   }
 
   return profile;
@@ -97,7 +97,7 @@ function mapRecallToServiceOrder(
     id: profile.id * 1000 + index,
     customerId: profile.id,
     title: `${recall.component} | Campanha ${recall.campaignNumber}`,
-    description: `${recall.summary}\n\nCorrecao indicada: ${recall.remedy}`,
+    description: `${recall.summary}\n\nCorreção indicada: ${recall.remedy}`,
     status: getStatus(index, recall),
     amount: 0,
     scheduledAt: normalizeDate(recall.reportReceivedDate),

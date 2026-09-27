@@ -1,13 +1,16 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { colors, spacing, typography } from '@/theme';
+
 type LoadingProps = {
   message?: string;
+  fullScreen?: boolean;
 };
 
-export function Loading({ message = 'Carregando dados...' }: LoadingProps) {
+export function Loading({ message = 'Carregando dados...', fullScreen = false }: LoadingProps) {
   return (
-    <View style={styles.container}>
-      <ActivityIndicator color="#0B5CAD" size="large" />
+    <View style={[styles.container, fullScreen && styles.fullScreen]} accessibilityLiveRegion="polite">
+      <ActivityIndicator color={colors.primary} size="large" />
       <Text style={styles.text}>{message}</Text>
     </View>
   );
@@ -17,12 +20,15 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    paddingVertical: 48,
+    gap: spacing.md,
+    paddingVertical: spacing.xxl,
+  },
+  fullScreen: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
   text: {
-    color: '#475569',
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.bodyStrong,
+    color: colors.textSecondary,
   },
 });

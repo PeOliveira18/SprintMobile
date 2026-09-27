@@ -1,13 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CustomerCard } from '@/components/CustomerCard';
 import { EmptyState } from '@/components/EmptyState';
@@ -16,67 +10,70 @@ import { FordOneHeader } from '@/components/FordOneHeader';
 import { Loading } from '@/components/Loading';
 import { MetricCard } from '@/components/MetricCard';
 import { OneCard } from '@/components/OneCard';
-import { VehicleBanner } from '@/components/VehicleBanner';
+import { Screen } from '@/components/Screen';
+import { SectionHeader } from '@/components/SectionHeader';
+import { CustomerVehicleBanner } from '@/components/VehicleBanner';
+import { useAccountSession } from '@/hooks/useAccountSession';
 import { useCustomers } from '@/hooks/useCustomers';
+import { colors, radius, spacing, typography } from '@/theme';
 import { Customer } from '@/types/customer';
+import { firstName, formatCurrency } from '@/utils/format';
+import { leadPriorityLabel } from '@/utils/labels';
 
 export function DashboardScreen() {
   const { data: customers = [], isLoading, isRefetching, error, refetch } = useCustomers();
+  const { profile } = useAccountSession();
 
   const metrics = useMemo(() => buildMetrics(customers), [customers]);
-  const featuredCustomer = customers.find((customer) => customer.vehicle.includes('Territory')) ??
-    customers[0];
-  const topLead = customers
-    .slice()
-    .sort((a, b) => b.churnProbability - a.churnProbability)[0];
+  const rankedCustomers = useMemo(
+    () => customers.slice().sort((a, b) => b.churnProbability - a.churnProbability),
+    [customers],
+  );
+  const featuredCustomer =
+    customers.find((customer) => customer.vehicle.includes('Territory')) ?? customers[0];
+  const topLead = rankedCustomers[0];
+  const name = firstName(profile?.name);
 
   if (isLoading) {
-    return <Loading message="Carregando VIN Share..." />;
+    return <Loading fullScreen message="Carregando VIN Share..." />;
   }
 
   if (error) {
     return (
-      <View style={styles.feedback}>
-        <ErrorMessage
-          message="Nao foi possivel carregar os dados."
-          onRetry={() => {
-            void refetch();
-          }}
-        />
-      </View>
+      <ErrorMessage
+        fullScreen
+        message="Não foi possível carregar os dados da rede."
+        onRetry={() => {
+          void refetch();
+        }}
+      />
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={() => {
-            void refetch();
-          }}
-        />
-      }
+    <Screen
+      refreshing={isRefetching}
+      onRefresh={() => {
+        void refetch();
+      }}
     >
       <FordOneHeader
-        title="Ola, Carlos!"
-        subtitle="Confira os indicadores e recomendacoes para melhorar o VIN Share da rede Ford."
+        title={name ? `Olá, ${name}!` : 'Olá!'}
+        subtitle="Confira os indicadores e recomendações para melhorar o VIN Share da Rede Ford."
       />
 
-      {featuredCustomer ? <VehicleBanner customer={featuredCustomer} /> : null}
+      {featuredCustomer ? <CustomerVehicleBanner customer={featuredCustomer} /> : null}
 
       <View style={styles.metrics}>
         <MetricCard
           label="VIN Share"
           value={`${metrics.vinShare}%`}
-          helper="Veiculos com servico na rede"
+          helper="Veículos com serviço na rede"
           tone="blue"
           icon="analytics-outline"
         />
         <MetricCard
-          label="Veiculos"
+          label="Veículos"
           value={String(metrics.total)}
           helper={`${metrics.inNetwork} vinculados a ordens`}
           tone="green"
@@ -85,161 +82,110 @@ export function DashboardScreen() {
         <MetricCard
           label="Leads abertos"
           value={String(metrics.openLeads)}
-          helper="Retencao e revisao atrasada"
+          helper="Retenção e revisão atrasada"
           tone="red"
           icon="flag-outline"
         />
         <MetricCard
           label="Receita"
-          value={`R$ ${metrics.revenue}`}
-          helper="Servicos concluidos"
+          value={metrics.revenue}
+          helper="Serviços concluídos"
           tone="yellow"
           icon="cash-outline"
         />
       </View>
 
       {topLead ? (
-        <OneCard>
+        <OneCard variant="highlight">
           <View style={styles.recommendationHeader}>
             <View style={styles.recommendationIcon}>
-              <Ionicons name="sparkles-outline" size={20} color="#005BEA" />
+              <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
             </View>
             <View style={styles.recommendationTitleGroup}>
-              <Text style={styles.cardTitle}>Recomendacao da IA Ford</Text>
-              <Text style={styles.cardSubtitle}>
-                Lead com maior impacto potencial no VIN Share.
-              </Text>
+              <Text style={typography.cardTitle}>Recomendação da IA Ford</Text>
+              <Text style={styles.cardSubtitle}>Lead com maior impacto potencial no VIN Share.</Text>
             </View>
           </View>
           <View style={styles.recommendationBody}>
-            <Text style={styles.recommendationName}>{topLead.name}</Text>
-            <Text style={styles.recommendationText}>
-              {topLead.vehicle} esta ha {topLead.lastServiceDays} dias sem servico
-              recente. Prioridade {topLead.leadPriority.toLowerCase()} para contato.
+            <Text style={typography.cardTitle}>{topLead.name}</Text>
+            <Text style={typography.body}>
+              {topLead.vehicle} está há {topLead.lastServiceDays} dias sem serviço na rede.
+              Prioridade {leadPriorityLabel(topLead.leadPriority).toLowerCase()} para contato.
             </Text>
           </View>
-          <Text
-            style={styles.link}
+          <Pressable
+            accessibilityRole="link"
             onPress={() => router.push(`/clientes/${topLead.id}`)}
+            style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
           >
-            Ver plano do VIN →
-          </Text>
+            <Text style={typography.link}>Ver plano do VIN</Text>
+            <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+          </Pressable>
         </OneCard>
       ) : null}
 
-      <View style={styles.sectionHeader}>
-        <View>
-          <Text style={styles.sectionTitle}>Leads de retencao</Text>
-          <Text style={styles.sectionDescription}>
-            Toque em um lead para ver VIN, concessionaria, ordens e acao recomendada.
-          </Text>
-        </View>
-      </View>
+      <SectionHeader
+        title="Leads de retenção"
+        description="Toque em um lead para ver VIN, concessionária, ordens e ação recomendada."
+      />
 
-      {customers.length === 0 ? (
+      {rankedCustomers.length === 0 ? (
         <EmptyState
           title="Nenhum cliente encontrado"
-          description="Nao ha veiculos para calcular o VIN Share."
+          description="Não há veículos para calcular o VIN Share."
         />
       ) : (
         <View style={styles.list}>
-          {customers
-            .slice()
-            .sort((a, b) => b.churnProbability - a.churnProbability)
-            .map((customer) => (
-              <CustomerCard
-                key={customer.id}
-                customer={customer}
-                onPress={() => router.push(`/clientes/${customer.id}`)}
-              />
-            ))}
+          {rankedCustomers.map((customer) => (
+            <CustomerCard
+              key={customer.id}
+              customer={customer}
+              onPress={() => router.push(`/clientes/${customer.id}`)}
+            />
+          ))}
         </View>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
 function buildMetrics(customers: Customer[]) {
   if (customers.length === 0) {
-    return {
-      total: 0,
-      inNetwork: 0,
-      vinShare: 0,
-      openLeads: 0,
-      revenue: '0',
-    };
+    return { total: 0, inNetwork: 0, vinShare: 0, openLeads: 0, revenue: formatCurrency(0) };
   }
 
   const inNetwork = customers.filter((customer) => customer.hasServiceInNetwork).length;
-  const vinShare = Math.round((inNetwork / customers.length) * 100);
   const openLeads = customers.filter((customer) => customer.leadStatus === 'ABERTO').length;
-  const revenue = customers.reduce(
-    (total, customer) => total + customer.completedServiceRevenue,
-    0,
-  );
+  const revenue = customers.reduce((total, customer) => total + customer.completedServiceRevenue, 0);
 
   return {
     total: customers.length,
     inNetwork,
-    vinShare,
+    vinShare: Math.round((inNetwork / customers.length) * 100),
     openLeads,
-    revenue: revenue.toLocaleString('pt-BR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }),
+    revenue: formatCurrency(revenue).replace(/,00$/, ''),
   };
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F8FC',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 36,
-    gap: 16,
-  },
-  feedback: {
-    flex: 1,
-    backgroundColor: '#F5F8FC',
-    padding: 18,
-    justifyContent: 'center',
-  },
   metrics: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    color: '#071331',
-    fontSize: 21,
-    fontWeight: '900',
-  },
-  sectionDescription: {
-    color: '#526174',
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 4,
-  },
   list: {
-    gap: 12,
+    gap: spacing.md,
   },
   recommendationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.md,
   },
   recommendationIcon: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#EAF2FF',
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -247,37 +193,25 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 3,
   },
-  cardTitle: {
-    color: '#071331',
-    fontSize: 16,
-    fontWeight: '900',
-  },
   cardSubtitle: {
-    color: '#526174',
+    ...typography.caption,
     fontSize: 13,
-    lineHeight: 18,
+    fontWeight: '400',
+    color: colors.textSecondary,
   },
   recommendationBody: {
-    marginTop: 14,
-    backgroundColor: '#F7FAFF',
-    borderRadius: 10,
-    padding: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
     gap: 5,
   },
-  recommendationName: {
-    color: '#071331',
-    fontSize: 16,
-    fontWeight: '900',
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
   },
-  recommendationText: {
-    color: '#43516A',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  link: {
-    color: '#005BEA',
-    fontSize: 14,
-    fontWeight: '900',
-    marginTop: 14,
+  pressed: {
+    opacity: 0.7,
   },
 });

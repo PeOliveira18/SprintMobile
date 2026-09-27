@@ -1,56 +1,77 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '@/components/ActionButton';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorMessage } from '@/components/ErrorMessage';
 import { FordOneHeader } from '@/components/FordOneHeader';
 import { Loading } from '@/components/Loading';
+import { OneCard } from '@/components/OneCard';
+import { Screen } from '@/components/Screen';
+import { SectionHeader } from '@/components/SectionHeader';
 import { StatusBadge } from '@/components/StatusBadge';
-import { VehicleBanner } from '@/components/VehicleBanner';
+import { TextField } from '@/components/TextField';
+import { CustomerVehicleBanner } from '@/components/VehicleBanner';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useCustomers } from '@/hooks/useCustomers';
 import { scheduleCampaignNotification } from '@/services/notificationService';
-import { Campaign, CreateCampaignPayload } from '@/types/customer';
+import { colors, radius, spacing, typography } from '@/theme';
+import { Campaign, CreateCampaignPayload, Customer } from '@/types/customer';
+import { formatDateTime } from '@/utils/format';
+import { channelLabel, leadPriorityLabel, leadTypeLabel, riskTone } from '@/utils/labels';
 
 const CHANNELS: CreateCampaignPayload['channel'][] = ['WhatsApp', 'SMS', 'Email'];
+const CHIP_WIDTH = 200;
+const CHIP_GAP = 10;
+const DEFAULT_TITLE = 'Ação de retenção VIN Share';
+const DEFAULT_MESSAGE =
+  'Identificamos uma oportunidade para trazer o seu Ford de volta à Rede oficial, com peças originais e técnicos especializados.';
 
 export function CampaignScreen() {
-  const { customerId } = useLocalSearchParams<{ customerId?: string }>();
-  const parsedCustomerId = Number(customerId);
+  const params = useLocalSearchParams<{ customerId?: string; title?: string }>();
   const customersQuery = useCustomers();
   const campaignsHook = useCampaigns();
-  const [selectedCustomerId, setSelectedCustomerId] = useState(
-    Number.isFinite(parsedCustomerId) ? parsedCustomerId : 1,
-  );
+  const [selectedCustomerId, setSelectedCustomerId] = useState(parseCustomerId(params.customerId));
   const [channel, setChannel] = useState<CreateCampaignPayload['channel']>('WhatsApp');
-  const [title, setTitle] = useState('Acao de retencao VIN Share');
-  const [message, setMessage] = useState(
-    'Identificamos um lead de retencao para trazer o veiculo de volta a rede oficial Ford.',
+  const [title, setTitle] = useState(params.title ?? DEFAULT_TITLE);
+  const [message, setMessage] = useState(DEFAULT_MESSAGE);
+  const [errors, setErrors] = useState<{ title?: string; message?: string }>({});
+  const railRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    setSelectedCustomerId(parseCustomerId(params.customerId));
+    setTitle(params.title ?? DEFAULT_TITLE);
+  }, [params.customerId, params.title]);
+
+  const customers = useMemo(() => customersQuery.data ?? [], [customersQuery.data]);
+  const selectedCustomer = useMemo(
+    () => customers.find((customer) => customer.id === selectedCustomerId),
+    [customers, selectedCustomerId],
   );
 
-  const selectedCustomer = useMemo(
-    () => customersQuery.data?.find((customer) => customer.id === selectedCustomerId),
-    [customersQuery.data, selectedCustomerId],
-  );
+  const scrollRailToSelected = useCallback(() => {
+    const index = customers.findIndex((customer) => customer.id === selectedCustomerId);
+    railRef.current?.scrollTo({ x: Math.max(0, index) * (CHIP_WIDTH + CHIP_GAP), animated: true });
+  }, [customers, selectedCustomerId]);
+
+  useEffect(() => {
+    scrollRailToSelected();
+  }, [scrollRailToSelected]);
 
   async function handleCreateCampaign() {
+    const nextErrors = {
+      title: title.trim() ? undefined : 'Informe o título do lead.',
+      message: message.trim() ? undefined : 'Informe a mensagem para o cliente.',
+    };
+    setErrors(nextErrors);
+
     if (!selectedCustomer) {
-      Alert.alert('Validacao', 'Selecione um cliente antes de criar a campanha.');
+      Alert.alert('Selecione um cliente', 'Escolha o cliente antes de criar o lead.');
       return;
     }
 
-    if (!title.trim() || !message.trim()) {
-      Alert.alert('Validacao', 'Informe titulo e mensagem da campanha.');
+    if (nextErrors.title || nextErrors.message) {
       return;
     }
 
@@ -62,88 +83,73 @@ export function CampaignScreen() {
     });
 
     if (campaign) {
-      await scheduleCampaignNotification(campaign, selectedCustomer.name);
-      Alert.alert('Lead salvo', `Acao de retencao salva para ${selectedCustomer.name}.`);
+      const notified = await scheduleCampaignNotification(campaign, selectedCustomer.name);
+      Alert.alert(
+        'Lead salvo',
+        `Ação de retenção salva para ${selectedCustomer.name}.${
+          notified ? '' : '\n\nAtive as notificações do app para receber o alerta do lead.'
+        }`,
+      );
     }
   }
 
+  function handleClear() {
+    Alert.alert('Limpar leads', 'Remover todos os leads salvos neste aparelho?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Remover',
+        style: 'destructive',
+        onPress: () => {
+          void campaignsHook.clearCampaigns();
+        },
+      },
+    ]);
+  }
+
   if (customersQuery.isLoading || campaignsHook.loading) {
-    return <Loading message="Preparando campanha..." />;
+    return <Loading fullScreen message="Preparando leads..." />;
   }
 
   if (customersQuery.error) {
     return (
-      <View style={styles.feedback}>
-        <ErrorMessage
-          message="Nao foi possivel carregar os clientes."
-          onRetry={() => {
-            void customersQuery.refetch();
-          }}
-        />
-      </View>
+      <ErrorMessage
+        fullScreen
+        message="Não foi possível carregar os clientes."
+        onRetry={() => {
+          void customersQuery.refetch();
+        }}
+      />
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
+    <Screen>
       <FordOneHeader
-        title="Agendar servico"
-        subtitle="Crie uma acao de pos-venda para manter o cliente conectado a Rede Ford."
+        back
+        minimal
+        title="Leads de retenção"
+        subtitle="Crie uma ação de pós-venda para manter o cliente conectado à Rede Ford."
       />
 
-      {selectedCustomer ? <VehicleBanner customer={selectedCustomer} /> : null}
+      {selectedCustomer ? <CustomerVehicleBanner customer={selectedCustomer} /> : null}
 
-      <View style={styles.panel}>
-        <View style={styles.panelHeader}>
-          <View style={styles.panelTitleGroup}>
-            <Text style={styles.panelEyebrow}>Ford ONE</Text>
-            <Text style={styles.panelTitle}>Cliente selecionado</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.back()}
-            style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
-          >
-            <Text style={styles.backButtonText}>Voltar</Text>
-          </Pressable>
-        </View>
-
+      <OneCard>
+        <Text style={styles.eyebrow}>Passo 1</Text>
+        <Text style={typography.cardTitle}>Selecione o cliente</Text>
         <ScrollView
+          ref={railRef}
           horizontal
+          onContentSizeChange={scrollRailToSelected}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.customerRail}
         >
-          {customersQuery.data?.map((customer) => (
-            <Pressable
+          {customers.map((customer) => (
+            <CustomerChip
               key={customer.id}
-              accessibilityRole="button"
+              customer={customer}
+              selected={selectedCustomerId === customer.id}
               onPress={() => setSelectedCustomerId(customer.id)}
-              style={[
-                styles.customerChip,
-                selectedCustomerId === customer.id && styles.customerChipActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.customerChipTitle,
-                  selectedCustomerId === customer.id && styles.customerChipTitleActive,
-                ]}
-              >
-                #{customer.id} {customer.name}
-              </Text>
-              <Text
-                style={[
-                  styles.customerChipSubtitle,
-                  selectedCustomerId === customer.id && styles.customerChipSubtitleActive,
-                ]}
-              >
-                {customer.leadType.replaceAll('_', ' ')} | {customer.leadPriority}
-              </Text>
-            </Pressable>
+            />
           ))}
         </ScrollView>
 
@@ -154,215 +160,202 @@ export function CampaignScreen() {
                 {selectedCustomer.name}
               </Text>
               <StatusBadge
-                label={selectedCustomer.leadPriority}
-                tone={
-                  selectedCustomer.riskLevel === 'Baixo'
-                    ? 'green'
-                    : selectedCustomer.riskLevel === 'Medio'
-                      ? 'yellow'
-                      : 'red'
-                }
+                label={`Prioridade ${leadPriorityLabel(selectedCustomer.leadPriority).toLowerCase()}`}
+                tone={riskTone(selectedCustomer.riskLevel)}
               />
             </View>
-            <Text style={styles.summaryText} numberOfLines={1}>
-              {selectedCustomer.vehicle} | {selectedCustomer.dealership}
+            <Text style={styles.summaryText}>
+              {selectedCustomer.vehicle} · {selectedCustomer.dealership}
             </Text>
-            <Text style={styles.summaryText} numberOfLines={2}>
-              VIN {selectedCustomer.vin} | {selectedCustomer.leadType.replaceAll('_', ' ')}
-            </Text>
+            <Text style={styles.summaryText}>{leadTypeLabel(selectedCustomer.leadType)}</Text>
           </View>
         ) : null}
-      </View>
+      </OneCard>
 
-      <View style={styles.panel}>
-        <Text style={styles.panelTitle}>Canal de contato</Text>
-        <View style={styles.channelRow}>
-          {CHANNELS.map((item) => (
-            <Pressable
-              key={item}
-              accessibilityRole="button"
-              onPress={() => setChannel(item)}
-              style={[styles.channel, channel === item && styles.channelActive]}
-            >
-              <Text style={[styles.channelText, channel === item && styles.channelTextActive]}>
-                {item}
-              </Text>
-            </Pressable>
-          ))}
+      <OneCard>
+        <Text style={styles.eyebrow}>Passo 2</Text>
+        <Text style={typography.cardTitle}>Canal e mensagem</Text>
+        <View style={styles.channelRow} accessibilityRole="radiogroup">
+          {CHANNELS.map((item) => {
+            const active = channel === item;
+            return (
+              <Pressable
+                key={item}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active }}
+                onPress={() => setChannel(item)}
+                style={[styles.channel, active && styles.channelActive]}
+              >
+                <Text style={[styles.channelText, active && styles.channelTextActive]}>
+                  {channelLabel(item)}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
-        <Text style={styles.inputLabel}>Titulo</Text>
-        <TextInput
+        <TextField
+          label="Título"
           value={title}
-          onChangeText={setTitle}
-          placeholder="Titulo do lead"
-          style={styles.input}
+          onChangeText={(value) => {
+            setTitle(value);
+            setErrors((current) => ({ ...current, title: undefined }));
+          }}
+          placeholder="Título do lead"
+          error={errors.title}
+          maxLength={80}
         />
-
-        <Text style={styles.inputLabel}>Mensagem</Text>
-        <TextInput
+        <TextField
+          label="Mensagem"
           value={message}
-          onChangeText={setMessage}
-          placeholder="Mensagem para contato"
+          onChangeText={(value) => {
+            setMessage(value);
+            setErrors((current) => ({ ...current, message: undefined }));
+          }}
+          placeholder="Mensagem para o cliente"
+          error={errors.message}
           multiline
-          style={[styles.input, styles.textArea]}
-          textAlignVertical="top"
+          maxLength={400}
         />
 
         {campaignsHook.error ? <Text style={styles.error}>{campaignsHook.error}</Text> : null}
 
         <ActionButton
-          label={campaignsHook.saving ? 'Salvando...' : 'Criar lead'}
+          label={campaignsHook.saving ? 'Salvando...' : 'Criar lead e notificar'}
+          icon="send-outline"
           disabled={campaignsHook.saving}
           onPress={() => {
             void handleCreateCampaign();
           }}
         />
-      </View>
+      </OneCard>
 
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Leads salvos</Text>
-        {campaignsHook.campaigns.length > 0 ? (
-          <ActionButton
-            label="Limpar"
-            onPress={() => {
-              void campaignsHook.clearCampaigns();
-            }}
-            variant="danger"
-            style={styles.clearButton}
-          />
-        ) : null}
-      </View>
+      <SectionHeader
+        title="Leads salvos"
+        description="Armazenados no aparelho com AsyncStorage."
+        action={
+          campaignsHook.campaigns.length > 0 ? (
+            <ActionButton label="Limpar" icon="trash-outline" variant="danger" compact onPress={handleClear} />
+          ) : undefined
+        }
+      />
 
       {campaignsHook.campaigns.length === 0 ? (
         <EmptyState
-          title="Nenhum lead local"
-          description="Os leads criados aparecerao aqui mesmo apos reiniciar o app."
+          title="Nenhum lead salvo"
+          description="Os leads criados aparecem aqui e continuam salvos mesmo após reiniciar o app."
         />
       ) : (
         <View style={styles.list}>
           {campaignsHook.campaigns.map((campaign) => (
-            <CampaignCard key={campaign.id} campaign={campaign} />
+            <CampaignCard
+              key={campaign.id}
+              campaign={campaign}
+              customerName={customers.find((item) => item.id === campaign.customerId)?.name}
+            />
           ))}
         </View>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
-function CampaignCard({ campaign }: { campaign: Campaign }) {
+function CustomerChip({
+  customer,
+  selected,
+  onPress,
+}: {
+  customer: Customer;
+  selected: boolean;
+  onPress: () => void;
+}) {
   return (
-    <View style={styles.campaignCard}>
-      <View style={styles.campaignHeader}>
-        <Text style={styles.campaignTitle}>{campaign.title}</Text>
-        <StatusBadge label={campaign.channel} tone="blue" />
-      </View>
-      <Text style={styles.campaignMessage}>{campaign.message}</Text>
-      <Text style={styles.campaignMeta}>
-        Cliente #{campaign.customerId} | Local #{campaign.id}
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      onPress={onPress}
+      style={[styles.customerChip, selected && styles.customerChipActive]}
+    >
+      <Text style={[styles.customerChipTitle, selected && styles.customerChipTitleActive]} numberOfLines={1}>
+        {customer.name}
       </Text>
-    </View>
+      <Text style={styles.customerChipSubtitle} numberOfLines={1}>
+        {customer.vehicle} · {leadPriorityLabel(customer.leadPriority)}
+      </Text>
+    </Pressable>
   );
+}
+
+function CampaignCard({ campaign, customerName }: { campaign: Campaign; customerName?: string }) {
+  return (
+    <OneCard>
+      <View style={styles.campaignHeader}>
+        <Text style={[typography.cardTitle, styles.flex]}>{campaign.title}</Text>
+        <StatusBadge label={channelLabel(campaign.channel)} tone="blue" />
+      </View>
+      <Text style={typography.body}>{campaign.message}</Text>
+      <Text style={styles.campaignMeta}>
+        {customerName ?? `Cliente #${campaign.customerId}`} · criado em{' '}
+        {formatDateTime(toLocalIso(campaign.createdAt))}
+      </Text>
+    </OneCard>
+  );
+}
+
+function parseCustomerId(value?: string) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function toLocalIso(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString();
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F8FC',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 36,
-    gap: 16,
-  },
-  feedback: {
-    flex: 1,
-    backgroundColor: '#F5F8FC',
-    padding: 18,
-    justifyContent: 'center',
-  },
-  panel: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#D7DEE8',
-    padding: 16,
-    gap: 12,
-  },
-  panelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  panelTitleGroup: {
-    flex: 1,
-    minWidth: 0,
-  },
-  panelEyebrow: {
-    color: '#005BEA',
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  panelTitle: {
-    color: '#0F172A',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  backButton: {
-    borderRadius: 999,
-    backgroundColor: '#EEF5FF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  backButtonText: {
-    color: '#005BEA',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  pressed: {
-    transform: [{ scale: 0.98 }],
+  eyebrow: {
+    ...typography.overline,
+    color: colors.primary,
+    marginBottom: -8,
   },
   customerRail: {
-    gap: 10,
-    paddingRight: 8,
+    gap: CHIP_GAP,
+    paddingRight: spacing.sm,
   },
   customerChip: {
-    width: 210,
-    borderRadius: 12,
+    width: CHIP_WIDTH,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#D7DEE8',
-    padding: 12,
-    gap: 4,
-    backgroundColor: '#F8FAFC',
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.xs,
+    backgroundColor: colors.surfaceMuted,
   },
   customerChipActive: {
-    borderColor: '#005BEA',
-    backgroundColor: '#EEF5FF',
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
   },
   customerChipTitle: {
-    color: '#0F172A',
+    color: colors.text,
     fontSize: 14,
     fontWeight: '900',
   },
   customerChipTitleActive: {
-    color: '#005BEA',
+    color: colors.primary,
   },
   customerChipSubtitle: {
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  customerChipSubtitleActive: {
-    color: '#12324A',
+    ...typography.caption,
   },
   customerSummary: {
-    borderRadius: 12,
-    backgroundColor: '#F8FAFC',
-    padding: 12,
-    gap: 6,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
+    padding: spacing.md,
+    gap: spacing.xs,
   },
   summaryTop: {
     flexDirection: 'row',
@@ -371,109 +364,56 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   summaryName: {
+    ...typography.cardTitle,
     flex: 1,
     minWidth: 0,
-    color: '#0F172A',
-    fontSize: 16,
-    fontWeight: '900',
   },
   summaryText: {
-    color: '#64748B',
+    ...typography.caption,
     fontSize: 13,
-    marginTop: 3,
+    color: colors.textSecondary,
   },
   channelRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
   },
   channel: {
     flex: 1,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#D7DEE8',
-    paddingVertical: 12,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceMuted,
   },
   channelActive: {
-    backgroundColor: '#005BEA',
-    borderColor: '#005BEA',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   channelText: {
-    color: '#334155',
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '900',
   },
   channelTextActive: {
-    color: '#FFFFFF',
-  },
-  inputLabel: {
-    color: '#475569',
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    color: '#0F172A',
-    fontSize: 15,
-    backgroundColor: '#FFFFFF',
-  },
-  textArea: {
-    minHeight: 120,
+    color: colors.textInverse,
   },
   error: {
-    color: '#B91C1C',
+    color: colors.danger,
     fontWeight: '800',
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  sectionTitle: {
-    color: '#0F172A',
-    fontSize: 21,
-    fontWeight: '900',
-  },
-  clearButton: {
-    minHeight: 42,
-  },
   list: {
-    gap: 12,
-  },
-  campaignCard: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D7DEE8',
-    backgroundColor: '#FFFFFF',
-    padding: 14,
-    gap: 10,
+    gap: spacing.md,
   },
   campaignHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 10,
   },
-  campaignTitle: {
+  flex: {
     flex: 1,
-    color: '#0F172A',
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  campaignMessage: {
-    color: '#475569',
-    fontSize: 14,
-    lineHeight: 20,
   },
   campaignMeta: {
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '700',
+    ...typography.caption,
   },
 });

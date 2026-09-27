@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 
+import { DEFAULT_ONBOARDING } from '@/constants/onboarding';
 import {
   AccountCredentials,
   AccountOnboarding,
@@ -10,14 +11,6 @@ import {
 
 const ACCOUNT_KEY = 'ford_one_local_account';
 const SESSION_KEY = 'ford_one_active_profile';
-const DEFAULT_ONBOARDING: AccountOnboarding = {
-  vehicle: 'Ford Territory Titanium 2022',
-  objective: 'Lazer',
-  frequency: '1 a 3 vezes por semana',
-  monthlyDistance: '1.001 a 2.000 km',
-  preference: 'Tecnologia',
-  contactChannel: 'WhatsApp',
-};
 
 export const accountStorage = {
   async getStoredAccount(): Promise<StoredAccount | null> {
@@ -33,7 +26,7 @@ export const accountStorage = {
     const normalizedEmail = normalizeEmail(payload.email);
 
     if (!payload.name.trim() || !normalizedEmail || !payload.password.trim()) {
-      throw new Error('Informe nome, email e senha para cadastrar.');
+      throw new Error('Informe nome, e-mail e senha para cadastrar.');
     }
 
     const account: StoredAccount = {
@@ -63,10 +56,29 @@ export const accountStorage = {
     }
 
     if (account.email !== email || account.password !== credentials.password.trim()) {
-      throw new Error('Email ou senha invalidos.');
+      throw new Error('E-mail ou senha inválidos.');
     }
 
     const profile = toProfile(account);
+    await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(profile));
+
+    return profile;
+  },
+
+  async updateOnboarding(onboarding: AccountOnboarding): Promise<AccountProfile> {
+    const [account, session] = await Promise.all([
+      this.getStoredAccount(),
+      this.getSessionProfile(),
+    ]);
+
+    if (!account || !session || account.id !== session.id) {
+      throw new Error('Entre na sua conta para atualizar o perfil de uso.');
+    }
+
+    const updatedAccount: StoredAccount = { ...account, onboarding };
+    const profile = toProfile(updatedAccount);
+
+    await SecureStore.setItemAsync(ACCOUNT_KEY, JSON.stringify(updatedAccount));
     await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(profile));
 
     return profile;

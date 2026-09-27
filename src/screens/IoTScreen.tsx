@@ -1,4 +1,6 @@
-import { Image, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { ComponentProps } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '@/components/ActionButton';
 import { EmptyState } from '@/components/EmptyState';
@@ -7,93 +9,79 @@ import { FordOneHeader } from '@/components/FordOneHeader';
 import { Loading } from '@/components/Loading';
 import { MetricCard } from '@/components/MetricCard';
 import { OneCard } from '@/components/OneCard';
+import { Screen } from '@/components/Screen';
+import { SectionHeader } from '@/components/SectionHeader';
+import { StatusBadge } from '@/components/StatusBadge';
 import { TelemetryCard } from '@/components/TelemetryCard';
-import { TERRITORY_IMAGE } from '@/components/VehicleBanner';
+import { VehicleBanner } from '@/components/VehicleBanner';
+import { getVehicleOption } from '@/constants/onboarding';
+import { useAccountSession } from '@/hooks/useAccountSession';
 import { useDeviceBattery } from '@/hooks/useDeviceBattery';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import { useWeatherInsight } from '@/hooks/useWeatherInsight';
+import { colors, radius, spacing, tones, typography } from '@/theme';
 import { IoTSnapshot } from '@/types/customer';
 import { WeatherInsight } from '@/types/weather';
+import { formatDateTime } from '@/utils/format';
+import { sensorTone, severityLabel } from '@/utils/labels';
+
+type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export function IoTScreen() {
   const { data: snapshots = [], isLoading, isRefetching, error, refetch } = useTelemetry();
   const weatherQuery = useWeatherInsight();
   const deviceBattery = useDeviceBattery();
+  const { profile } = useAccountSession();
   const metrics = buildTelemetryMetrics(snapshots);
+  const vehicle = getVehicleOption(profile?.onboarding.vehicle ?? '');
+
+  function refreshAll() {
+    void refetch();
+    void weatherQuery.refetch();
+    void deviceBattery.reload();
+  }
 
   if (isLoading) {
-    return <Loading message="Sincronizando telemetria IoT..." />;
+    return <Loading fullScreen message="Sincronizando telemetria IoT..." />;
   }
 
   if (error) {
     return (
-      <View style={styles.feedback}>
-        <ErrorMessage
-          message="Nao foi possivel carregar a telemetria."
-          onRetry={() => {
-            void refetch();
-          }}
-        />
-      </View>
+      <ErrorMessage
+        fullScreen
+        message="Não foi possível carregar a telemetria."
+        onRetry={() => {
+          void refetch();
+        }}
+      />
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefetching || weatherQuery.isRefetching}
-          onRefresh={() => {
-            void refetch();
-            void weatherQuery.refetch();
-          }}
-        />
-      }
-    >
+    <Screen refreshing={isRefetching || weatherQuery.isRefetching} onRefresh={refreshAll}>
       <FordOneHeader
-        title="Dados do seu veiculo"
-        subtitle="Informacoes em tempo real para antecipar manutencoes e proteger o VIN Share."
+        title="Dados do seu veículo"
+        subtitle="Informações em tempo real para antecipar manutenções e proteger o VIN Share."
       />
 
-      <View style={styles.connectedCard}>
-        <Image source={TERRITORY_IMAGE} style={styles.connectedImage} />
-        <View style={styles.connectedTextGroup}>
-          <Text style={styles.connectedTitle}>Ford Territory Titanium 2022</Text>
-          <Text style={styles.connectedText}>ABC1D23 | 18.732 km</Text>
-          <View style={styles.connectedStatus}>
-            <View style={styles.connectedDot} />
-            <Text style={styles.connectedStatusText}>FordPass Connect ativo</Text>
-          </View>
-        </View>
-        <ActionButton
-          label="Atualizar"
-          onPress={() => {
-            void refetch();
-            void weatherQuery.refetch();
-          }}
-          variant="secondary"
-          style={styles.refreshButton}
-        />
-      </View>
+      <VehicleBanner
+        vehicle={vehicle.label}
+        meta={vehicle.meta}
+        connected
+        connectedLabel="FordPass Connect ativo"
+      />
 
       <View style={styles.metrics}>
+        <MetricCard label="Veículos" value={String(metrics.total)} helper="Com leitura ativa" icon="car-outline" />
         <MetricCard
-          label="Veiculos"
-          value={String(metrics.total)}
-          helper="Com leitura ativa"
-          icon="car-outline"
-        />
-        <MetricCard
-          label="Criticos"
+          label="Críticos"
           value={String(metrics.critical)}
           helper="Acionar consultor"
           tone="red"
           icon="alert-circle-outline"
         />
         <MetricCard
-          label="Atencao"
+          label="Atenção"
           value={String(metrics.warning)}
           helper="Monitorar e lembrar"
           tone="yellow"
@@ -118,30 +106,24 @@ export function IoTScreen() {
       />
 
       <OneCard>
-        <View>
-          <Text style={styles.deviceEyebrow}>Sensor do dispositivo</Text>
-          <Text style={styles.deviceTitle}>Bateria do aparelho</Text>
-          <Text style={styles.deviceText}>
-            Leitura real via Expo Battery para demonstrar integracao com recurso
-            nativo do dispositivo.
-          </Text>
-        </View>
-        <View style={styles.deviceMetricRow}>
-          <View style={styles.deviceMetric}>
-            <Text style={styles.deviceMetricLabel}>Nivel</Text>
-            <Text style={styles.deviceMetricValue}>
-              {deviceBattery.batteryLevel === null ? '--' : `${deviceBattery.batteryLevel}%`}
-            </Text>
-          </View>
-          <View style={styles.deviceMetric}>
-            <Text style={styles.deviceMetricLabel}>Economia</Text>
-            <Text style={styles.deviceMetricValue}>
-              {deviceBattery.lowPowerMode ? 'Ativa' : 'Inativa'}
-            </Text>
-          </View>
+        <CardHeading
+          icon="phone-portrait-outline"
+          eyebrow="Sensor do dispositivo"
+          title="Bateria do aparelho"
+        />
+        <Text style={typography.body}>
+          Leitura real via Expo Battery, demonstrando integração com um recurso nativo do dispositivo.
+        </Text>
+        <View style={styles.tileRow}>
+          <Tile
+            label="Nível"
+            value={deviceBattery.batteryLevel === null ? '--' : `${deviceBattery.batteryLevel}%`}
+          />
+          <Tile label="Economia" value={deviceBattery.lowPowerMode ? 'Ativa' : 'Inativa'} />
         </View>
         <ActionButton
-          label={deviceBattery.loading ? 'Lendo...' : 'Atualizar sensor'}
+          label={deviceBattery.loading ? 'Lendo sensor...' : 'Atualizar sensor'}
+          icon="refresh-outline"
           disabled={deviceBattery.loading}
           onPress={() => {
             void deviceBattery.reload();
@@ -150,10 +132,15 @@ export function IoTScreen() {
         />
       </OneCard>
 
+      <SectionHeader
+        title="Telemetria da frota"
+        description="Leituras simuladas de sensores dos veículos conectados."
+      />
+
       {snapshots.length === 0 ? (
         <EmptyState
           title="Sem telemetria"
-          description="A API nao retornou leituras para montar o painel IoT."
+          description="Nenhum veículo enviou leituras para montar o painel IoT."
         />
       ) : (
         <View style={styles.list}>
@@ -162,7 +149,7 @@ export function IoTScreen() {
           ))}
         </View>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
@@ -179,60 +166,75 @@ function WeatherInsightCard({
 }) {
   if (loading) {
     return (
-      <OneCard style={styles.weatherCard}>
-        <Text style={styles.deviceEyebrow}>Condicoes externas</Text>
-        <Text style={styles.deviceTitle}>Carregando clima real...</Text>
-        <Text style={styles.deviceText}>Buscando dados atuais da Open-Meteo.</Text>
+      <OneCard>
+        <CardHeading icon="cloud-outline" eyebrow="Condições externas" title="Carregando clima real..." />
+        <Text style={typography.body}>Buscando dados atuais da Open-Meteo.</Text>
       </OneCard>
     );
   }
 
   if (error || !insight) {
     return (
-      <OneCard style={styles.weatherCard}>
-        <Text style={styles.deviceEyebrow}>Condicoes externas</Text>
-        <Text style={styles.deviceTitle}>Clima indisponivel</Text>
-        <Text style={styles.deviceText}>
-          Nao foi possivel consultar a Open-Meteo agora.
-        </Text>
-        <ActionButton label="Tentar novamente" variant="secondary" onPress={onRetry} />
+      <OneCard>
+        <CardHeading icon="cloud-offline-outline" eyebrow="Condições externas" title="Clima indisponível" />
+        <Text style={typography.body}>Não foi possível consultar a Open-Meteo agora.</Text>
+        <ActionButton label="Tentar novamente" icon="refresh-outline" variant="secondary" onPress={onRetry} />
       </OneCard>
     );
   }
 
+  const tone = tones[sensorTone(insight.severity)];
+
   return (
-    <OneCard style={styles.weatherCard}>
+    <OneCard>
       <View style={styles.weatherHeader}>
-        <View style={styles.weatherIcon}>
-          <Text style={styles.weatherIconText}>{getWeatherIcon(insight.severity)}</Text>
-        </View>
-        <View style={styles.connectedTextGroup}>
-          <Text style={styles.deviceEyebrow}>Condicoes externas</Text>
-          <Text style={styles.deviceTitle}>{insight.location}</Text>
-          <Text style={styles.deviceText}>{formatWeatherTime(insight.updatedAt)}</Text>
-        </View>
+        <CardHeading
+          icon={getWeatherIcon(insight)}
+          eyebrow="Condições externas"
+          title={insight.location}
+        />
+        <StatusBadge label={severityLabel(insight.severity)} tone={sensorTone(insight.severity)} />
+      </View>
+      <Text style={styles.updatedAt}>
+        {insight.updatedAt ? `Atualizado em ${formatDateTime(insight.updatedAt)}` : 'Atualização em tempo real'}
+      </Text>
+
+      <View style={styles.tileRow}>
+        <Tile label="Temp." value={formatValue(insight.temperature, ' °C')} />
+        <Tile label="Chuva" value={formatValue(insight.rain, ' mm')} />
+      </View>
+      <View style={styles.tileRow}>
+        <Tile label="Prob. chuva" value={formatValue(insight.precipitationProbability, '%')} />
+        <Tile label="Vento" value={formatValue(insight.windSpeed, ' km/h')} />
       </View>
 
-      <View style={styles.weatherMetrics}>
-        <WeatherMetric label="Temp." value={formatNumber(insight.temperature, ' C')} />
-        <WeatherMetric label="Chuva" value={formatNumber(insight.rain, ' mm')} />
-        <WeatherMetric label="Prob." value={formatNumber(insight.precipitationProbability, ' %')} />
-        <WeatherMetric label="Vento" value={formatNumber(insight.windSpeed, ' km/h')} />
-      </View>
-
-      <View style={[styles.weatherInsightBox, styles[getSeverityStyle(insight.severity)]]}>
-        <Text style={styles.weatherSeverity}>{insight.severity}</Text>
-        <Text style={styles.weatherRecommendation}>{insight.recommendation}</Text>
+      <View style={[styles.insightBox, { backgroundColor: tone.background, borderColor: tone.border }]}>
+        <Text style={styles.insightTitle}>Recomendação para a rede</Text>
+        <Text style={typography.body}>{insight.recommendation}</Text>
       </View>
     </OneCard>
   );
 }
 
-function WeatherMetric({ label, value }: { label: string; value: string }) {
+function CardHeading({ icon, eyebrow, title }: { icon: IconName; eyebrow: string; title: string }) {
   return (
-    <View style={styles.weatherMetric}>
-      <Text style={styles.deviceMetricLabel}>{label}</Text>
-      <Text style={styles.deviceMetricValue}>{value}</Text>
+    <View style={styles.heading}>
+      <View style={styles.headingIcon}>
+        <Ionicons name={icon} size={22} color={colors.primary} />
+      </View>
+      <View style={styles.headingCopy}>
+        <Text style={styles.eyebrow}>{eyebrow}</Text>
+        <Text style={typography.title}>{title}</Text>
+      </View>
+    </View>
+  );
+}
+
+function Tile({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.tile}>
+      <Text style={typography.overline}>{label}</Text>
+      <Text style={styles.tileValue}>{value}</Text>
     </View>
   );
 }
@@ -246,222 +248,86 @@ function buildTelemetryMetrics(snapshots: IoTSnapshot[]) {
   };
 }
 
-function formatNumber(value: number | null, unit: string) {
-  if (value === null) {
-    return '--';
-  }
-
-  return `${Math.round(value)}${unit}`;
+function formatValue(value: number | null, unit: string) {
+  return value === null ? '--' : `${Math.round(value)}${unit}`;
 }
 
-function formatWeatherTime(value: string | null) {
-  if (!value) {
-    return 'Atualizacao em tempo real';
+function getWeatherIcon(insight: WeatherInsight): IconName {
+  if ((insight.rain ?? 0) > 0 || (insight.precipitationProbability ?? 0) >= 55) {
+    return 'rainy-outline';
   }
 
-  return `Atualizado em ${value.replace('T', ' ')}`;
-}
-
-function getWeatherIcon(severity: WeatherInsight['severity']) {
-  if (severity === 'Critico') {
-    return '!';
+  if ((insight.temperature ?? 0) >= 32) {
+    return 'sunny-outline';
   }
 
-  if (severity === 'Atencao') {
-    return '~';
-  }
-
-  return 'OK';
-}
-
-function getSeverityStyle(severity: WeatherInsight['severity']) {
-  if (severity === 'Critico') {
-    return 'weatherCritical' as const;
-  }
-
-  if (severity === 'Atencao') {
-    return 'weatherWarning' as const;
-  }
-
-  return 'weatherNormal' as const;
+  return insight.severity === 'Normal' ? 'partly-sunny-outline' : 'cloudy-outline';
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F8FC',
-  },
-  content: {
-    padding: 18,
-    paddingBottom: 36,
-    gap: 16,
-  },
-  feedback: {
-    flex: 1,
-    backgroundColor: '#F5F8FC',
-    padding: 18,
-    justifyContent: 'center',
-  },
   metrics: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
   },
   list: {
-    gap: 12,
+    gap: spacing.md,
   },
-  connectedCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D7DEE8',
-    padding: 14,
+  heading: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  connectedImage: {
-    width: 78,
-    height: 52,
-    borderRadius: 8,
-    backgroundColor: '#EEF3F8',
-  },
-  connectedDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#09A66D',
-  },
-  connectedStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 5,
-  },
-  connectedTextGroup: {
+    gap: spacing.md,
     flex: 1,
     minWidth: 0,
   },
-  connectedTitle: {
-    color: '#071331',
-    fontSize: 15,
-    fontWeight: '900',
+  headingIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
   },
-  connectedText: {
-    color: '#526174',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  connectedStatusText: {
-    color: '#0A7B4B',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  refreshButton: {
-    minHeight: 40,
-  },
-  deviceEyebrow: {
-    color: '#0B5CAD',
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  deviceTitle: {
-    color: '#0F172A',
-    fontSize: 20,
-    fontWeight: '900',
-    marginTop: 4,
-  },
-  deviceText: {
-    color: '#475569',
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 6,
-  },
-  deviceMetricRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  deviceMetric: {
+  headingCopy: {
     flex: 1,
-    borderRadius: 8,
-    backgroundColor: '#F8FAFC',
-    padding: 12,
-    gap: 4,
+    minWidth: 0,
   },
-  deviceMetricLabel: {
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  deviceMetricValue: {
-    color: '#0F172A',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  weatherCard: {
-    gap: 14,
+  eyebrow: {
+    ...typography.overline,
+    color: colors.primary,
   },
   weatherHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    alignItems: 'flex-start',
+    gap: spacing.sm,
   },
-  weatherIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EAF2FF',
+  updatedAt: {
+    ...typography.caption,
   },
-  weatherIconText: {
-    color: '#005BEA',
-    fontSize: 23,
+  tileRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  tile: {
+    flex: 1,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceMuted,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  tileValue: {
+    color: colors.text,
+    fontSize: 18,
     fontWeight: '900',
   },
-  weatherMetrics: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  weatherMetric: {
-    minWidth: '47%',
-    flex: 1,
-    borderRadius: 8,
-    backgroundColor: '#F8FAFC',
-    padding: 12,
-    gap: 4,
-  },
-  weatherInsightBox: {
+  insightBox: {
     borderRadius: 10,
     borderWidth: 1,
-    padding: 12,
+    padding: spacing.md,
     gap: 5,
   },
-  weatherNormal: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
-  },
-  weatherWarning: {
-    backgroundColor: '#FFF8DF',
-    borderColor: '#F7E4A4',
-  },
-  weatherCritical: {
-    backgroundColor: '#FFF0EE',
-    borderColor: '#FFD4CD',
-  },
-  weatherSeverity: {
-    color: '#071331',
-    fontSize: 13,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  weatherRecommendation: {
-    color: '#334155',
-    fontSize: 14,
-    lineHeight: 20,
+  insightTitle: {
+    ...typography.overline,
+    color: colors.text,
   },
 });

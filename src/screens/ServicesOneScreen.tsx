@@ -1,90 +1,127 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '@/components/ActionButton';
+import { ErrorMessage } from '@/components/ErrorMessage';
 import { FordOneHeader } from '@/components/FordOneHeader';
+import { Loading } from '@/components/Loading';
 import { MetricCard } from '@/components/MetricCard';
 import { OneCard } from '@/components/OneCard';
-import { VehicleBanner } from '@/components/VehicleBanner';
+import { Screen } from '@/components/Screen';
+import { CustomerVehicleBanner } from '@/components/VehicleBanner';
 import { useCustomers } from '@/hooks/useCustomers';
+import { colors, radius, spacing, typography } from '@/theme';
+import { formatCurrency } from '@/utils/format';
+
+const REVIEW_PRICE = 1280;
 
 const benefits = [
-  'Pecas originais Ford',
-  'Tecnicos especializados',
-  'Equipamentos de diagnostico',
-  'Atualizacoes oficiais',
-  'Historico completo do veiculo',
-  'Preservacao da garantia',
+  'Peças originais Ford',
+  'Técnicos especializados',
+  'Equipamentos de diagnóstico',
+  'Atualizações oficiais',
+  'Histórico completo do veículo',
+  'Preservação da garantia',
 ];
 
 const risks = [
-  'Perda da garantia de fabrica',
-  'Pecas de qualidade inferior',
-  'Diagnosticos imprecisos',
+  'Perda da garantia de fábrica',
+  'Peças de qualidade inferior',
+  'Diagnósticos imprecisos',
   'Custos maiores no futuro',
 ];
 
 export function ServicesOneScreen() {
-  const { data: customers = [] } = useCustomers();
+  const { data: customers = [], isLoading, error, refetch, isRefetching } = useCustomers();
   const customer = customers[0];
 
+  if (isLoading) {
+    return <Loading fullScreen message="Carregando serviços..." />;
+  }
+
+  if (error) {
+    return (
+      <ErrorMessage
+        fullScreen
+        message="Não foi possível carregar os dados do veículo."
+        onRetry={() => {
+          void refetch();
+        }}
+      />
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <Screen
+      refreshing={isRefetching}
+      onRefresh={() => {
+        void refetch();
+      }}
+    >
       <FordOneHeader
-        title="Sua garantia esta chegando ao fim"
-        subtitle="Veja por que continuar realizando revisoes na Rede Ford e a melhor escolha para o seu veiculo."
+        title="Sua garantia está chegando ao fim"
+        subtitle="Veja por que continuar realizando revisões na Rede Ford é a melhor escolha para o seu veículo."
       />
 
-      {customer ? <VehicleBanner customer={customer} /> : null}
+      {customer ? <CustomerVehicleBanner customer={customer} /> : null}
 
       <View style={styles.metrics}>
-        <MetricCard label="Garantia" value="45 dias" helper="Ou 1.800 km restantes" icon="shield-checkmark-outline" />
-        <MetricCard label="Revisao" value="60.000 km" helper="Recomendada pela IA" tone="yellow" icon="construct-outline" />
+        <MetricCard
+          label="Garantia"
+          value="45 dias"
+          helper="Ou 1.800 km restantes"
+          icon="shield-checkmark-outline"
+        />
+        <MetricCard
+          label="Revisão"
+          value="60.000 km"
+          helper="Recomendada pela IA"
+          tone="yellow"
+          icon="construct-outline"
+        />
       </View>
 
       <OneCard>
-        <Text style={styles.sectionTitle}>Rede Ford vs. Fora da Rede</Text>
-        <View style={styles.compareGrid}>
-          <View style={styles.compareColumn}>
-            <Text style={styles.compareTitle}>Rede Ford</Text>
-            {benefits.map((item) => (
-              <FeatureRow key={item} label={item} positive />
-            ))}
-          </View>
-          <View style={styles.compareColumn}>
-            <Text style={styles.compareTitle}>Fora da Rede</Text>
-            {risks.map((item) => (
-              <FeatureRow key={item} label={item} />
-            ))}
-          </View>
+        <Text style={typography.section}>Rede Ford vs. fora da rede</Text>
+        <View style={styles.compareColumn}>
+          <Text style={[styles.compareTitle, styles.positiveTitle]}>Na Rede Ford</Text>
+          {benefits.map((item) => (
+            <FeatureRow key={item} label={item} positive />
+          ))}
+        </View>
+        <View style={styles.compareColumn}>
+          <Text style={[styles.compareTitle, styles.negativeTitle]}>Fora da rede</Text>
+          {risks.map((item) => (
+            <FeatureRow key={item} label={item} />
+          ))}
         </View>
       </OneCard>
 
-      <OneCard style={styles.recommendation}>
-        <Text style={styles.sectionTitle}>Recomendacao da IA Ford</Text>
-        <Text style={styles.description}>
-          Com base no historico do veiculo e no seu perfil de uso, recomendamos
-          realizar a revisao dos 60.000 km na Rede Ford.
+      <OneCard variant="highlight">
+        <Text style={typography.section}>Recomendação da IA Ford</Text>
+        <Text style={typography.body}>
+          Com base no histórico do veículo e no seu perfil de uso, recomendamos realizar a revisão
+          dos 60.000 km na Rede Ford.
         </Text>
-        <View style={styles.priceRow}>
-          <View>
-            <Text style={styles.priceLabel}>A partir de</Text>
-            <Text style={styles.price}>R$ 1.280,00</Text>
-          </View>
-          <ActionButton
-            label={customer ? 'Agendar agora' : 'Carregando...'}
-            disabled={!customer}
-            onPress={() => {
-              if (customer) {
-                router.push(`/campanha?customerId=${customer.id}`);
-              }
-            }}
-            style={styles.cta}
-          />
+        <View>
+          <Text style={typography.caption}>A partir de</Text>
+          <Text style={styles.price}>{formatCurrency(REVIEW_PRICE)}</Text>
         </View>
+        <ActionButton
+          label="Agendar revisão"
+          disabled={!customer}
+          onPress={() => {
+            if (customer) {
+              router.push({
+                pathname: '/campanha',
+                params: { customerId: String(customer.id), title: 'Agendamento de revisão 60.000 km' },
+              });
+            }
+          }}
+        />
       </OneCard>
-    </ScrollView>
+    </Screen>
   );
 }
 
@@ -93,8 +130,8 @@ function FeatureRow({ label, positive = false }: { label: string; positive?: boo
     <View style={styles.featureRow}>
       <Ionicons
         name={positive ? 'checkmark-circle-outline' : 'close-circle-outline'}
-        size={17}
-        color={positive ? '#09A66D' : '#D92D20'}
+        size={18}
+        color={positive ? colors.success : colors.danger}
       />
       <Text style={styles.featureText}>{label}</Text>
     </View>
@@ -102,19 +139,38 @@ function FeatureRow({ label, positive = false }: { label: string; positive?: boo
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F8FC' },
-  content: { padding: 16, paddingBottom: 36, gap: 16 },
-  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  sectionTitle: { color: '#071331', fontSize: 18, fontWeight: '900', marginBottom: 12 },
-  compareGrid: { gap: 12 },
-  compareColumn: { borderRadius: 12, borderWidth: 1, borderColor: '#DDE6F3', padding: 14, gap: 10 },
-  compareTitle: { color: '#005BEA', fontSize: 15, fontWeight: '900' },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  featureText: { color: '#43516A', fontSize: 14, flex: 1 },
-  recommendation: { backgroundColor: '#F3F8FF' },
-  description: { color: '#43516A', fontSize: 14, lineHeight: 20 },
-  priceRow: { marginTop: 14, gap: 12 },
-  priceLabel: { color: '#526174', fontSize: 12, fontWeight: '700' },
-  price: { color: '#071331', fontSize: 24, fontWeight: '900' },
-  cta: { marginTop: 4 },
+  metrics: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  compareColumn: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    gap: 10,
+  },
+  compareTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  positiveTitle: {
+    color: colors.primary,
+  },
+  negativeTitle: {
+    color: colors.danger,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  featureText: {
+    ...typography.body,
+    flex: 1,
+  },
+  price: {
+    ...typography.metric,
+  },
 });

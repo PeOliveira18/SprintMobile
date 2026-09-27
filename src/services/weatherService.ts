@@ -1,14 +1,14 @@
-import axios from 'axios';
+import { create } from 'axios';
 
 import { OpenMeteoResponse, WeatherInsight } from '@/types/weather';
 
-const weatherApi = axios.create({
+const weatherApi = create({
   baseURL: 'https://api.open-meteo.com/v1',
   timeout: 8000,
 });
 
 const SAO_PAULO = {
-  name: 'Sao Paulo - SP',
+  name: 'São Paulo - SP',
   latitude: -23.55,
   longitude: -46.63,
 };
@@ -73,20 +73,20 @@ function getWeatherRecommendation(
   windSpeed: number | null,
 ) {
   if ((rain ?? 0) > 0 || (precipitationProbability ?? 0) >= 55) {
-    return 'Previsao de chuva na regiao. Recomende checagem de pneus, freios e palhetas antes do proximo deslocamento.';
+    return 'Previsão de chuva na região. Recomende checagem de pneus, freios e palhetas antes do próximo deslocamento.';
   }
 
   if ((temperature ?? 0) >= 32) {
-    return 'Temperatura elevada. Recomende revisao de bateria, ar-condicionado e fluidos do veiculo.';
+    return 'Temperatura elevada. Recomende revisão de bateria, ar-condicionado e fluidos do veículo.';
   }
 
   if ((windSpeed ?? 0) >= 30) {
-    return 'Vento acima do normal. Recomende calibragem de pneus e atencao ao planejamento de rota.';
+    return 'Vento acima do normal. Recomende calibragem de pneus e atenção ao planejamento de rota.';
   }
 
   if (severity === 'Critico') {
-    return 'Condicoes externas severas. Priorize contato preventivo com clientes em risco.';
+    return 'Condições externas severas. Priorize contato preventivo com clientes em risco.';
   }
 
-  return 'Condicoes externas estaveis. Mantenha o acompanhamento preventivo da telemetria.';
+  return 'Condições externas estáveis. Mantenha o acompanhamento preventivo da telemetria.';
 }

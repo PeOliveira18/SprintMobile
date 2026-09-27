@@ -1,6 +1,6 @@
-import axios from 'axios';
+import { create } from 'axios';
 
-export const api = axios.create({
+export const api = create({
   baseURL: 'https://api.nhtsa.gov',
   timeout: 8000,
   headers: {

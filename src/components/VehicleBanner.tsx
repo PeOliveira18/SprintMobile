@@ -1,29 +1,49 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image, ImageSourcePropType, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
+import { getVehicleImage } from '@/constants/images';
+import { colors, radius, shadows, spacing, typography } from '@/theme';
 import { Customer } from '@/types/customer';
-
-export const TERRITORY_IMAGE = require('../../assets/ford-one/image27.jpg') as ImageSourcePropType;
+import { formatKm } from '@/utils/format';
 
 type VehicleBannerProps = {
-  customer: Customer;
+  vehicle: string;
+  meta: string;
+  connected: boolean;
+  connectedLabel?: string;
+  disconnectedLabel?: string;
 };
 
-export function VehicleBanner({ customer }: VehicleBannerProps) {
+export function VehicleBanner({
+  vehicle,
+  meta,
+  connected,
+  connectedLabel = 'Conectado à Rede Ford',
+  disconnectedLabel = 'Lead fora da rede',
+}: VehicleBannerProps) {
   return (
     <View style={styles.card}>
-      <Image source={TERRITORY_IMAGE} style={styles.image} />
+      <Image
+        source={getVehicleImage(vehicle)}
+        style={styles.image}
+        accessibilityIgnoresInvertColors
+        accessibilityLabel={`Imagem ilustrativa do ${vehicle}`}
+      />
       <View style={styles.content}>
-        <Text style={styles.name}>
-          {customer.vehicle} {customer.modelYear}
+        <Text style={styles.name} numberOfLines={1}>
+          {vehicle}
         </Text>
-        <Text style={styles.meta}>
-          {customer.vin} • {customer.mileageKm.toLocaleString('pt-BR')} km
+        <Text style={styles.meta} numberOfLines={1}>
+          {meta}
         </Text>
         <View style={styles.statusRow}>
-          <Ionicons name="checkmark-circle" size={15} color="#09A66D" />
-          <Text style={styles.statusText}>
-            {customer.hasServiceInNetwork ? 'Conectado a rede Ford' : 'Lead fora da rede'}
+          <Ionicons
+            name={connected ? 'checkmark-circle' : 'alert-circle'}
+            size={15}
+            color={connected ? colors.success : colors.warning}
+          />
+          <Text style={[styles.statusText, !connected && styles.statusWarning]}>
+            {connected ? connectedLabel : disconnectedLabel}
           </Text>
         </View>
       </View>
@@ -31,47 +51,60 @@ export function VehicleBanner({ customer }: VehicleBannerProps) {
   );
 }
 
+export function CustomerVehicleBanner({ customer }: { customer: Customer }) {
+  return (
+    <VehicleBanner
+      vehicle={`${customer.vehicle} ${customer.modelYear}`}
+      meta={`${customer.vin} · ${formatKm(customer.mileageKm)}`}
+      connected={customer.hasServiceInNetwork}
+    />
+  );
+}
+
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#DDE6F3',
-    padding: 12,
+    borderColor: colors.border,
+    padding: spacing.md,
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
     alignItems: 'center',
+    ...shadows.card,
   },
   image: {
     width: 88,
     height: 58,
     borderRadius: 10,
-    backgroundColor: '#EEF3F8',
+    backgroundColor: colors.navy,
   },
   content: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: spacing.xs,
   },
   name: {
-    color: '#071331',
+    ...typography.cardTitle,
     fontSize: 15,
-    fontWeight: '900',
   },
   meta: {
-    color: '#526174',
-    fontSize: 12,
+    ...typography.caption,
     fontWeight: '700',
+    color: colors.textSecondary,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    marginTop: 3,
+    marginTop: 2,
   },
   statusText: {
-    color: '#0A7B4B',
+    color: colors.success,
     fontSize: 12,
     fontWeight: '800',
+  },
+  statusWarning: {
+    color: colors.warning,
   },
 });

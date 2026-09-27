@@ -17,7 +17,7 @@ export function useCampaigns() {
       const storedCampaigns = await campaignStorage.findAll();
       setCampaigns(storedCampaigns);
     } catch {
-      setError('Erro ao carregar campanhas locais.');
+      setError('Erro ao carregar os leads salvos.');
     } finally {
       setLoading(false);
     }
@@ -34,7 +34,7 @@ export function useCampaigns() {
         await campaignStorage.save(nextCampaigns);
         return campaign;
       } catch {
-        setError('Erro ao criar campanha de retencao.');
+        setError('Erro ao criar o lead de retenção.');
         return null;
       } finally {
         setSaving(false);

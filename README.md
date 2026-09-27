@@ -254,6 +254,21 @@ npm run lint        # ESLint (eslint-config-expo)
 npm run doctor      # expo-doctor: dependências e configuração do SDK
 ```
 
+### Testes do APK no emulador
+
+APK de release (`ford-one-v1.0.0.apk`) instalado em emulador Pixel 7 com Android 16 (API 36).
+
+| Teste | Resultado |
+| --- | --- |
+| Fluxo 1: Resumo → Plano do VIN → criar lead por WhatsApp | ✅ Lead salvo e notificação exibida |
+| Fluxo 2: cadastro em 5 etapas | ✅ Conta criada e nome exibido no topo e em *Modelos* |
+| Fluxo 3: editar perfil de uso (Família + Conforto) | ✅ *Modelos* reordenado (Territory em primeiro) |
+| Fluxo 4: agendamentos em Serviços, Modelos e Rede | ✅ Leads abertos com título preenchido; filtro por estado funcionando |
+| Fluxo 5: IoT (clima real, bateria do aparelho, sensores) | ✅ Nível alterado no emulador (42%) lido pelo app |
+| Sessão e leads após fechar e reabrir o app | ✅ Mantidos |
+| Logout e login (senha errada e senha correta) | ✅ Senha errada recusada e login realizado |
+| Sem internet (modo avião) e "Tentar novamente" | ✅ Sem travamentos; clima volta após reconectar |
+
 ---
 
 ## Integrantes
